@@ -1,39 +1,24 @@
-import type { ReactNode } from "react"
-import "./globals.css"
-import type { Metadata } from "next"
+import type React from "react"
+import "@/app/globals.css"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Analytics } from "@vercel/analytics/react"
-import ErrorBoundary from "@/components/error-boundary"
-import { Suspense } from "react"
 
-// Initialize the Inter font
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Incremental Game Generator",
-  description: "Watch as AI builds a game through five progressive iterations",
-  icons: {
-    icon: [{ url: "/icon.png", sizes: "32x32", type: "image/png" }],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
-  },
+  description: "Create and play incremental games with AI",
     generator: 'v0.dev'
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head />
       <body className={inter.className}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </ThemeProvider>
-          <Analytics />
-        </Suspense>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

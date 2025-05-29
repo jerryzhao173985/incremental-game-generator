@@ -1,22 +1,22 @@
 import GameGenerator from "@/components/game-generator"
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-br from-purple-900 to-indigo-900">
-      <div className="max-w-5xl mx-auto">
-        <header className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4">Incremental Game Generator</h1>
-          <p className="text-lg sm:text-xl text-purple-200 max-w-2xl mx-auto">
-            Watch as AI builds a game through five progressive iterations, each one adding new features and complexity
-          </p>
-        </header>
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-purple-900 text-white p-4 shadow-md">
+        <div className="container mx-auto">
+          <h1 className="text-2xl font-bold">Incremental Game Generator</h1>
+          <p className="text-sm text-purple-200">Create and play incremental games with AI</p>
+        </div>
+      </header>
 
+      <main className="container mx-auto p-4 py-8">
         <GameGenerator />
+      </main>
 
-        <footer className="mt-12 text-center text-purple-300/50 text-sm">
-          <p>Built with Next.js and OpenAI</p>
-        </footer>
-      </div>
-    </main>
+      <footer className="bg-gray-800 text-gray-300 p-4 text-center text-sm mt-8">
+        <p>Incremental Game Generator - Built with Next.js and OpenAI</p>
+      </footer>
+    </div>
   )
 }

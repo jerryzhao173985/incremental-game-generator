@@ -1,347 +1,201 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText } from "lucide-react"
-import Script from "next/script"
+import { useParams } from "next/navigation"
+import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText, Bug } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import ReactMarkdown from "react-markdown"
+import EnhancedCodeViewer from "@/components/enhanced-code-viewer-simple"
+import { Suspense } from "react"
+import Link from "next/link"
+import { getGameFromStorage } from "@/lib/game-storage"
+import DirectGameRenderer from "./direct-game-renderer"
+import { safeGetItem, safeParse } from "@/lib/utils/storage-utils"
 
-// Simple syntax highlighting component
-function CodeBlock({ code, language }: { code: string; language: string }) {
-  return (
-    <pre className={`language-${language} overflow-auto p-4 bg-gray-900 text-gray-100 rounded-md`}>
-      <code>{code}</code>
-    </pre>
-  )
+// Add TypeScript interface for window with gameData
+declare global {
+  interface Window {
+    gameData?: any
+    latestGameData?: any
+  }
 }
 
 export default function GamePage() {
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [gameData, setGameData] = useState<{
-    html: string
-    css: string
-    js: string
-    title: string
-    description?: string
-    md?: string
-  } | null>(null)
+  const [gameData, setGameData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [logs, setLogs] = useState<string[]>([])
-  const [showDebug, setShowDebug] = useState(false)
-  const [threeJsLoaded, setThreeJsLoaded] = useState(false)
   const [activeTab, setActiveTab] = useState("game")
-  const [gameLoaded, setGameLoaded] = useState(false)
+  const [dataSource, setDataSource] = useState<string | null>(null)
+  const [debugMode, setDebugMode] = useState(false)
   const [gameError, setGameError] = useState<string | null>(null)
+  const [gameLoaded, setGameLoaded] = useState(false)
 
+  // Helper function to add logs
+  const addLog = (message: string) => {
+    setLogs((prev) => [...prev, `[${new Date().toISOString()}] ${message}`])
+  }
+
+  // Load the game data
   useEffect(() => {
     // Get the game ID from the URL
-    const gameId = params.id as string
-    console.log("Loading game with ID:", gameId)
-
-    // First try to get the game data from the URL
-    const gameDataParam = searchParams.get("data")
-    if (gameDataParam) {
-      try {
-        // Decode the base64 game data
-        const decodedData = decodeURIComponent(atob(gameDataParam))
-        const parsedData = JSON.parse(decodedData)
-
-        console.log("Game data found in URL parameters")
-        setGameData(parsedData)
-        document.title = `${parsedData.title} - Incremental Game Generator`
-        setLoading(false)
-        return
-      } catch (err) {
-        console.error("Error parsing game data from URL:", err)
-        // Continue to try localStorage as fallback
-      }
-    }
-
-    // If no data in URL or parsing failed, try localStorage
-    try {
-      const storedGames = localStorage.getItem("generatedGames")
-      console.log("Found stored games:", storedGames ? "Yes" : "No")
-
-      if (storedGames) {
-        const games = JSON.parse(storedGames)
-        console.log("Number of games found:", games.length)
-
-        // Debug: Log all game IDs to help diagnose the issue
-        console.log(
-          "Available game IDs:",
-          games.map((g: any) => g.id),
-        )
-
-        const game = games.find((g: any) => g.id === gameId)
-
-        if (game) {
-          console.log("Game found in localStorage:", game.title)
-          setGameData(game)
-          document.title = `${game.title} - Incremental Game Generator`
-        } else {
-          console.error("Game not found with ID:", gameId)
-          setError(`Game not found with ID: ${gameId}. Please go back and try again.`)
-        }
-      } else {
-        console.error("No games found in localStorage")
-        setError("No games found. Please go back and generate a game first.")
-      }
-    } catch (err) {
-      console.error("Error loading game:", err)
-      setError(`Failed to load game data: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
+    const gameId = params?.id as string
+    if (!gameId) {
+      setError("No game ID provided")
       setLoading(false)
-    }
-  }, [params.id, searchParams])
-
-  // Inject the game code into the page
-  useEffect(() => {
-    if (!gameData || !threeJsLoaded || activeTab !== "game") return
-
-    // Reset game state
-    setGameLoaded(false)
-    setGameError(null)
-
-    // Create the game container
-    const gameContainer = document.getElementById("game-container")
-    if (!gameContainer) {
-      console.error("Game container not found")
-      setGameError("Game container not found")
       return
     }
 
-    // Clear any existing content
-    gameContainer.innerHTML = ""
+    console.log("Loading game with ID:", gameId)
+    addLog(`Loading game with ID: ${gameId}`)
 
-    // Add the HTML content
-    gameContainer.innerHTML = gameData.html
+    // Try multiple methods to get the game data
+    let foundGame = false
 
-    // Add the CSS
-    const styleElement = document.createElement("style")
-    styleElement.textContent = `
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        font-family: 'Arial', sans-serif;
-        background-color: white;
-      }
-      #game-container {
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        position: relative;
-        background-color: white;
-        color: black;
-      }
-      #error-display {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        background: rgba(255,0,0,0.8);
-        color: white;
-        padding: 10px;
-        border-radius: 5px;
-        font-family: monospace;
-        z-index: 9999;
-        max-width: 80%;
-        word-break: break-word;
-      }
-      #debug-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 5px;
-        font-family: monospace;
-        font-size: 10px;
-        z-index: 9999;
-        max-width: 300px;
-        max-height: 200px;
-        overflow: auto;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      ${gameData.css}
-    `
-    document.head.appendChild(styleElement)
+    // Method 1: Check if the game data was passed directly via window object
+    if (typeof window !== "undefined" && window.gameData) {
+      console.log("Found game data in window.gameData")
+      addLog("Found game data in window.gameData")
+      setGameData(window.gameData)
+      document.title = `${window.gameData.title} - Incremental Game Generator`
+      setDataSource("window.gameData")
+      foundGame = true
+    }
 
-    // Set up console log capture
-    const debugPanel = document.getElementById("debug-panel")
-    if (debugPanel) {
-      const originalConsoleLog = console.log
-      console.log = (...args) => {
-        originalConsoleLog.apply(console, args)
-        const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" ")
-
-        setLogs((prev) => [...prev, message])
-
-        debugPanel.innerHTML += message + "<br>"
-        debugPanel.style.display = showDebug ? "block" : "none"
+    // Method 2: Use our utility function to get the game
+    if (!foundGame) {
+      const game = getGameFromStorage(gameId)
+      if (game) {
+        console.log("Found game using utility function")
+        addLog("Found game using utility function")
+        setGameData(game)
+        document.title = `${game.title} - Incremental Game Generator`
+        setDataSource("utility_function")
+        foundGame = true
       }
     }
 
-    // Add error handler
-    window.onerror = (message, source, lineno, colno, error) => {
-      console.log("Game error:", message, "at", source, lineno, colno)
-      setGameError(`${message} at line ${lineno}`)
+    // Method 3: Check for the specific game in localStorage using multiple methods
+    if (!foundGame) {
+      try {
+        // First try the dedicated latest game storage
+        const latestGameId = safeGetItem("latestGameId")
+        const latestGame = safeGetItem("latestGame")
 
-      // Display error in the page
-      const errorDisplay = document.createElement("div")
-      errorDisplay.id = "error-display"
-      errorDisplay.textContent = "Error: " + message
-      document.body.appendChild(errorDisplay)
-
-      return false
-    }
-
-    // Add the JavaScript with proper DOMContentLoaded handling
-    try {
-      const scriptElement = document.createElement("script")
-
-      // Check if the game code uses THREE.js and add a fallback if needed
-      const modifiedJs = `
-        // Check if THREE is available, if not, provide a mock object
-        if (typeof THREE === 'undefined') {
-          console.log('THREE.js not found, creating mock object');
-          window.THREE = {
-            Scene: function() { return { add: function() {} } },
-            PerspectiveCamera: function() { return {} },
-            WebGLRenderer: function() { return { 
-              setSize: function() {}, 
-              render: function() {},
-              domElement: document.createElement('div')
-            } },
-            BoxGeometry: function() { return {} },
-            MeshBasicMaterial: function() { return {} },
-            Mesh: function() { return {} },
-            Vector3: function() { return {} },
-            Clock: function() { return { getElapsedTime: function() { return 0; } } }
-          };
-        }
-        
-        // Signal that the game is loaded
-        function signalGameLoaded() {
-          console.log('Game loaded successfully');
-          window.parent.postMessage({ type: 'gameLoaded' }, '*');
-          
-          // Also dispatch a custom event
-          try {
-            const event = new CustomEvent('gameLoaded');
-            document.dispatchEvent(event);
-          } catch (e) {
-            console.error('Error dispatching gameLoaded event:', e);
+        if (latestGameId === gameId && latestGame) {
+          const parsedGame = safeParse(latestGame, null)
+          if (parsedGame) {
+            console.log("Found game in latestGame storage")
+            addLog("Found game in latestGame storage")
+            setGameData(parsedGame)
+            document.title = `${parsedGame.title} - Incremental Game Generator`
+            setDataSource("latestGame")
+            foundGame = true
           }
         }
-        
-        ${gameData.js}
-        
-        // Signal game loaded after a short delay to ensure rendering is complete
-        setTimeout(signalGameLoaded, 500);
-      `
+        // Then try the full games array
+        else {
+          const storedGames = safeGetItem("generatedGames")
+          console.log("Checking generatedGames in localStorage:", storedGames ? "Found" : "Not found")
+          addLog(`Checking generatedGames in localStorage: ${storedGames ? "Found" : "Not found"}`)
 
-      // Check if the JS already has a DOMContentLoaded listener
-      if (modifiedJs.includes("DOMContentLoaded")) {
-        scriptElement.textContent = `
-          console.log('Game script loaded, executing...');
-          ${modifiedJs}
-          console.log('Game script execution completed');
-        `
-      } else {
-        // Wrap the code in a DOMContentLoaded listener
-        scriptElement.textContent = `
-          console.log('Game script loaded, waiting for DOMContentLoaded...');
-          document.addEventListener('DOMContentLoaded', function() {
+          if (storedGames) {
             try {
-              console.log('DOMContentLoaded fired, running game code...');
-              ${modifiedJs}
-              console.log('Game initialization complete');
-            } catch (e) {
-              console.log('Error during game initialization:', e.message);
-              var errorDisplay = document.createElement('div');
-              errorDisplay.id = 'error-display';
-              errorDisplay.textContent = 'Error: ' + e.message;
-              document.body.appendChild(errorDisplay);
-              
-              // Signal error to parent
-              window.parent.postMessage({ 
-                type: 'gameError', 
-                error: e.message 
-              }, '*');
+              const games = safeParse(storedGames, [])
+              if (!Array.isArray(games)) {
+                throw new Error("Stored games is not an array")
+              }
+
+              console.log("Number of games found:", games.length)
+              console.log("Looking for game with ID:", gameId)
+              addLog(`Number of games found: ${games.length}`)
+              addLog(`Looking for game with ID: ${gameId}`)
+              addLog(`Available game IDs: ${games.map((g: any) => g.id).join(", ")}`)
+
+              const game = games.find((g: any) => g.id === gameId)
+
+              if (game) {
+                console.log("Found game in generatedGames array:", game.title)
+                addLog(`Found game in generatedGames array: ${game.title}`)
+                setGameData(game)
+                document.title = `${game.title} - Incremental Game Generator`
+                setDataSource("generatedGames")
+                foundGame = true
+              }
+            } catch (parseError) {
+              console.error("Error parsing stored games:", parseError)
+              addLog(
+                `Error parsing stored games: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+              )
+              setError(
+                `Error parsing stored games: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+              )
             }
-          });
-        `
-      }
-
-      document.body.appendChild(scriptElement)
-
-      // Listen for the gameLoaded event
-      document.addEventListener("gameLoaded", () => {
-        console.log("Game loaded event received")
-        setGameLoaded(true)
-      })
-
-      // Set a timeout to mark the game as loaded even if the event doesn't fire
-      const loadTimeout = setTimeout(() => {
-        if (!gameLoaded) {
-          console.log("Game load timeout reached, assuming game is loaded")
-          setGameLoaded(true)
+          }
         }
-      }, 3000)
-
-      // Dispatch DOMContentLoaded manually if it might have already fired
-      if (document.readyState === "complete" || document.readyState === "interactive") {
-        console.log("Document already loaded, dispatching DOMContentLoaded manually")
-        setTimeout(() => {
-          const event = new Event("DOMContentLoaded")
-          document.dispatchEvent(event)
-        }, 100)
-      }
-
-      return () => {
-        clearTimeout(loadTimeout)
-      }
-    } catch (err) {
-      console.error("Error executing game code:", err)
-      setGameError(`Error executing game code: ${err instanceof Error ? err.message : String(err)}`)
-    }
-
-    return () => {
-      // Cleanup
-      if (styleElement.parentNode) {
-        document.head.removeChild(styleElement)
-      }
-      // Reset console.log
-      if (typeof window !== "undefined") {
-        console.log = console.log.__proto__.log || console.log
-      }
-    }
-  }, [gameData, showDebug, threeJsLoaded, activeTab])
-
-  // Listen for messages from the game
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === "gameLoaded") {
-        console.log("Game loaded message received")
-        setGameLoaded(true)
-      } else if (event.data.type === "gameError") {
-        console.error("Game error message received:", event.data.error)
-        setGameError(event.data.error)
+      } catch (err) {
+        console.error("Error accessing localStorage:", err)
+        addLog(`Error accessing localStorage: ${err instanceof Error ? err.message : String(err)}`)
+        setError(`Error accessing localStorage: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
-    window.addEventListener("message", handleMessage)
-    return () => window.removeEventListener("message", handleMessage)
-  }, [])
+    // Method 4: Check for minimal game data if other methods failed
+    if (!foundGame) {
+      try {
+        const minimalGame = safeGetItem("minimalLatestGame")
+        if (minimalGame) {
+          const parsedGame = safeParse(minimalGame, null)
+          if (parsedGame) {
+            console.log("Found game in minimalLatestGame storage")
+            addLog("Found game in minimalLatestGame storage")
+            setGameData(parsedGame)
+            document.title = `${parsedGame.title} - Incremental Game Generator`
+            setDataSource("minimalLatestGame")
+            foundGame = true
+          }
+        }
+      } catch (err) {
+        console.error("Error accessing minimal game data:", err)
+        addLog(`Error accessing minimal game data: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    // Method 5: Add a function to attempt recovery if no game is found
+    if (!foundGame) {
+      // Last resort - check if any games exist and use the latest one
+      try {
+        const storedGames = safeGetItem("generatedGames")
+        if (storedGames) {
+          const games = safeParse(storedGames, [])
+          if (Array.isArray(games) && games.length > 0) {
+            // Use the most recent game as a fallback
+            const latestGame = games[games.length - 1]
+            console.log("No exact match found, using most recent game as fallback")
+            addLog("No exact match found, using most recent game as fallback")
+            setGameData(latestGame)
+            document.title = `${latestGame.title} - Incremental Game Generator`
+            setDataSource("fallback_most_recent")
+            foundGame = true
+          }
+        }
+      } catch (err) {
+        console.error("Error in fallback game loading:", err)
+        addLog(`Error in fallback game loading: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    // If we still haven't found the game, show an error
+    if (!foundGame) {
+      console.error("Game not found with ID:", gameId)
+      addLog(`Game not found with ID: ${gameId}`)
+      setError(`Game not found with ID: ${gameId}. Please go back and try again.`)
+    }
+
+    setLoading(false)
+  }, [params?.id])
 
   if (loading) {
     return (
@@ -349,6 +203,7 @@ export default function GamePage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading game...</p>
+          <p className="text-sm text-gray-500 mt-4">This may take a few moments...</p>
         </div>
       </div>
     )
@@ -361,25 +216,27 @@ export default function GamePage() {
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-1" />
             <div>
-              <h1 className="text-2xl font-bold text-red-600 mb-2">Error</h1>
+              <h1 className="text-2xl font-bold text-red-600 mb-2">Game Not Found</h1>
               <p className="text-gray-700 mb-6">{error}</p>
             </div>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => window.history.back()}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center"
-            >
+            <Link href="/" passHref>
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Home className="h-4 w-4 mr-2" />
+                Return to Generator
+              </Button>
+            </Link>
+            <Link href="/debug" passHref>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Bug className="h-4 w-4 mr-2" />
+                Debug Storage
+              </Button>
+            </Link>
+            <Button onClick={() => window.location.reload()} className="bg-gray-600 hover:bg-gray-700 text-white">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Go Back
-            </button>
-            <button
-              onClick={() => router.push("/")}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center"
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Go to Home
-            </button>
+              Reload
+            </Button>
           </div>
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
             <h3 className="text-sm font-semibold text-yellow-800 mb-2">Troubleshooting Tips</h3>
@@ -398,21 +255,16 @@ export default function GamePage() {
   }
 
   return (
-    <>
-      {/* Load THREE.js library */}
-      <Script
-        src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
-        onLoad={() => {
-          console.log("THREE.js loaded successfully")
-          setThreeJsLoaded(true)
-        }}
-        onError={() => {
-          console.error("Failed to load THREE.js")
-          // Continue anyway with the mock object
-          setThreeJsLoaded(true)
-        }}
-      />
-
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading game...</p>
+          </div>
+        </div>
+      }
+    >
       <div className="min-h-screen bg-gray-100 flex flex-col">
         {/* Header with game title and controls */}
         <header className="bg-purple-900 text-white p-4 shadow-md">
@@ -422,14 +274,18 @@ export default function GamePage() {
               <p className="text-sm text-purple-200">{gameData?.description || "Interactive Game"}</p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={() => window.history.back()}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30 text-white"
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Back to Generator
-              </Button>
+              <Link href="/" passHref>
+                <Button variant="outline" className="border-purple-500/50 hover:bg-purple-700/30 text-white">
+                  <Home className="h-4 w-4 mr-2" />
+                  Back to Generator
+                </Button>
+              </Link>
+              <Link href="/debug" passHref>
+                <Button variant="outline" className="border-purple-500/50 hover:bg-purple-700/30 text-white">
+                  <Bug className="h-4 w-4 mr-2" />
+                  Debug
+                </Button>
+              </Link>
               <Button
                 onClick={() => window.location.reload()}
                 variant="outline"
@@ -437,6 +293,14 @@ export default function GamePage() {
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reload
+              </Button>
+              <Button
+                onClick={() => setDebugMode(!debugMode)}
+                variant="outline"
+                className={`border-purple-500/50 hover:bg-purple-700/30 ${debugMode ? "bg-purple-700/30" : ""}`}
+              >
+                <Bug className="h-4 w-4 mr-2" />
+                {debugMode ? "Hide Debug" : "Debug Mode"}
               </Button>
             </div>
           </div>
@@ -469,52 +333,23 @@ export default function GamePage() {
             {/* Game Tab */}
             <TabsContent value="game" className="m-0">
               <div className="bg-white rounded-lg overflow-hidden shadow-lg relative" style={{ height: "80vh" }}>
-                {!threeJsLoaded && (
+                {gameData ? (
+                  <DirectGameRenderer
+                    html={gameData.html}
+                    css={gameData.css}
+                    js={gameData.js}
+                    gameId={gameData.id}
+                    debug={debugMode}
+                    onLog={(message) => addLog(message)}
+                    onError={(error) => setGameError(error)}
+                    onLoaded={() => setGameLoaded(true)}
+                  />
+                ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 z-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-600">Loading game resources...</p>
+                    <p className="text-gray-600">Loading game data...</p>
                   </div>
                 )}
-
-                {threeJsLoaded && !gameLoaded && !gameError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 z-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-600">Initializing game...</p>
-                  </div>
-                )}
-
-                {gameError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 z-10 p-4">
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 max-w-md">
-                      <h3 className="font-bold">Error Loading Game</h3>
-                      <p className="text-sm">{gameError}</p>
-                    </div>
-                    <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
-                    </Button>
-                  </div>
-                )}
-
-                <div id="game-container" className="w-full h-full"></div>
-
-                {/* Debug panel */}
-                <div
-                  id="debug-panel"
-                  className="fixed top-0 right-0 bg-black/70 text-white p-2 font-mono text-xs max-w-xs max-h-48 overflow-auto z-50"
-                  style={{ display: showDebug ? "block" : "none" }}
-                ></div>
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={() => setShowDebug(!showDebug)}
-                  variant="outline"
-                  className={`border-purple-500/50 hover:bg-purple-700/30 ${showDebug ? "bg-purple-700/30" : ""}`}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  {showDebug ? "Hide Debug Panel" : "Show Debug Panel"}
-                </Button>
               </div>
             </TabsContent>
 
@@ -528,21 +363,30 @@ export default function GamePage() {
                 </TabsList>
 
                 <TabsContent value="html" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
-                    <CodeBlock code={gameData?.html || ""} language="html" />
-                  </div>
+                  <EnhancedCodeViewer
+                    code={gameData?.html || ""}
+                    language="html"
+                    fileName="game.html"
+                    maxHeight="70vh"
+                  />
                 </TabsContent>
 
                 <TabsContent value="css" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
-                    <CodeBlock code={gameData?.css || ""} language="css" />
-                  </div>
+                  <EnhancedCodeViewer
+                    code={gameData?.css || ""}
+                    language="css"
+                    fileName="styles.css"
+                    maxHeight="70vh"
+                  />
                 </TabsContent>
 
                 <TabsContent value="js" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
-                    <CodeBlock code={gameData?.js || ""} language="javascript" />
-                  </div>
+                  <EnhancedCodeViewer
+                    code={gameData?.js || ""}
+                    language="javascript"
+                    fileName="game.js"
+                    maxHeight="70vh"
+                  />
                 </TabsContent>
               </Tabs>
             </TabsContent>
@@ -582,6 +426,6 @@ export default function GamePage() {
           <p>Incremental Game Generator - Built with Next.js and OpenAI</p>
         </footer>
       </div>
-    </>
+    </Suspense>
   )
 }

@@ -2,814 +2,680 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
-import GameStage from "./game-stage"
-import ApiKeyForm from "./api-key-form"
-import PipelineDocumentation from "./pipeline-documentation"
-import { AlertCircle, Download, ExternalLink, Loader2, RefreshCw, Wrench } from "lucide-react"
-import { Input } from "./ui/input"
-import { Textarea } from "./ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import ReactMarkdown from "react-markdown"
-import { saveGames } from "@/lib/game-utils"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Play, Code, FileText, ExternalLink, RefreshCw, Sparkles, Copy } from "lucide-react"
+import { saveGameToStorage, getAllGamesFromStorage } from "@/lib/game-storage"
+import SuperRobustGameRenderer from "@/components/super-robust-game-renderer"
 
-export type GameStageData = {
+// Define game stage interface
+interface GameStage {
+  id: string
   title: string
   description: string
   html: string
   css: string
   js: string
   md?: string
-  id?: string
 }
 
-export default function GameGenerator() {
-  const [stages, setStages] = useState<GameStageData[]>([])
-  const [currentStage, setCurrentStage] = useState(0)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isFixing, setIsFixing] = useState(false)
-  const [isComplete, setIsComplete] = useState(false)
-  const [gameTheme, setGameTheme] = useState("")
-  const [apiKey, setApiKey] = useState<string | null>(null)
-  const [themeInput, setThemeInput] = useState("")
-  const [showThemeInput, setShowThemeInput] = useState(false)
-  const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [iframeError, setIframeError] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [showFixDialog, setShowFixDialog] = useState(false)
-  const [errorDetails, setErrorDetails] = useState("")
-  const [activeTab, setActiveTab] = useState("preview")
-  const [logs, setLogs] = useState<string[]>([])
-  const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
+const GameGenerator = () => {
+  const [prompt, setPrompt] = useState("")
+  const [generating, setGenerating] = useState(false)
+  const [currentStage, setCurrentStage] = useState<any | null>(null)
+  const [savedGames, setSavedGames] = useState<any[]>([])
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [logs, setLogs] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState("game")
+  const [codeTab, setCodeTab] = useState("html")
+  const [gameLoaded, setGameLoaded] = useState(false)
+  const gameContainerRef = useRef<HTMLDivElement>(null)
 
-  // Load saved games from localStorage on component mount
+  // Helper function to add logs
+  const addStreamingMessage = (message: string, type: string) => {
+    console.log(`${type}: ${message}`)
+    setLogs((prev) => [...prev, `[${type.toUpperCase()}] ${message}`])
+  }
+
+  // Load saved games on mount
   useEffect(() => {
-    try {
-      // Check for API key first
-      const storedApiKey = localStorage.getItem("openai_api_key")
-      if (storedApiKey) {
-        setApiKey(storedApiKey)
-      }
+    const games = getAllGamesFromStorage()
+    setSavedGames(games)
 
-      const storedGames = localStorage.getItem("generatedGames")
-      if (storedGames) {
-        const games = JSON.parse(storedGames)
-        if (Array.isArray(games) && games.length > 0) {
-          // Only load the games if we don't already have stages
-          if (stages.length === 0) {
-            setStages(games)
-            setCurrentStage(games.length)
-            setGameTheme(localStorage.getItem("gameTheme") || "")
-            setShowThemeInput(false)
-            if (games.length === 5) {
-              setIsComplete(true)
-            }
-          }
-        } else if (storedApiKey) {
-          // If we have an API key but no games, show the theme input
-          setShowThemeInput(true)
-        }
-      } else if (storedApiKey) {
-        // If we have an API key but no games, show the theme input
-        setShowThemeInput(true)
-      }
-    } catch (error) {
-      console.error("Error loading saved games:", error)
+    // If we have saved games, load the most recent one
+    if (games.length > 0) {
+      setCurrentStage(games[games.length - 1])
+      addStreamingMessage(`Loaded most recent game: ${games[games.length - 1].title}`, "success")
     }
   }, [])
 
-  // Save games to localStorage whenever stages change
-  useEffect(() => {
-    if (stages.length > 0) {
-      try {
-        // Use the saveGames utility function
-        const saved = saveGames(stages)
-        if (saved) {
-          localStorage.setItem("gameTheme", gameTheme)
-        } else {
-          console.error("Failed to save games to localStorage")
-        }
-      } catch (error) {
-        console.error("Error saving games to localStorage:", error)
-      }
-    }
-  }, [stages, gameTheme])
-
-  const handleApiKeyValidated = (key: string) => {
-    setApiKey(key)
-    // Show theme input once API key is validated
-    setShowThemeInput(true)
-  }
-
-  const handleStartGeneration = () => {
-    if (!themeInput.trim()) {
-      alert("Please enter a theme for your game")
+  // Generate a new game based on prompt
+  const generateGame = async () => {
+    if (!prompt.trim()) {
+      setErrorMessage("Please enter a prompt to generate a game")
       return
     }
 
-    setGameTheme(themeInput)
-    setShowThemeInput(false)
-    handleGenerate()
-  }
-
-  const handleGenerate = async () => {
-    if (!apiKey) {
-      setErrorMessage("Please provide a valid OpenAI API key first.")
-      return
-    }
-
-    setIsGenerating(true)
-    setErrorMessage(null)
+    setGenerating(true)
+    setErrorMessage("")
+    addStreamingMessage(`Generating game from prompt: ${prompt}`, "info")
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      // In a real implementation, this would call an API to generate the game
+      // For now, we'll simulate a response with a timeout
 
-      // Check if the stage has an error title
-      if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
-        setErrorMessage(newStage.description)
-      } else {
-        // Ensure the stage has an ID
-        if (!newStage.id) {
-          newStage.id = `game-${currentStage + 1}-${Date.now()}`
+      setTimeout(() => {
+        // Create a new game with a unique ID
+        const newGameId = `game-${Date.now()}`
+
+        // Create a simple clicker game as a placeholder
+        // In a real implementation, this would be generated by the AI
+        const newGame = {
+          id: newGameId,
+          title: `Game from "${prompt.substring(0, 30)}${prompt.length > 30 ? "..." : ""}"`,
+          description: `An incremental game generated from the prompt: ${prompt}`,
+          html: `
+<div id="game-container">
+  <h1>AI Generated Game</h1>
+  <p class="prompt-text">From prompt: "${prompt}"</p>
+  <div class="stats">
+    <div>Score: <span id="score">0</span></div>
+    <div>Per Click: <span id="per-click">1</span></div>
+    <div>Per Second: <span id="per-second">0</span></div>
+  </div>
+  <button id="click-btn">Click Me!</button>
+  <div class="upgrades">
+    <h2>Upgrades</h2>
+    <button id="upgrade-click">Upgrade Click (+1) - Cost: 10</button>
+    <button id="upgrade-auto">Upgrade Auto (+1) - Cost: 50</button>
+  </div>
+</div>
+          `,
+          css: `
+#game-container {
+  font-family: Arial, sans-serif;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.prompt-text {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
+  font-size: 0.9em;
+}
+
+.stats {
+  background-color: #e9ecef;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+  display: flex;
+  justify-content: space-around;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#click-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 20px 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#click-btn:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+#click-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upgrades {
+  background-color: #e9ecef;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.upgrades button {
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+
+.upgrades button:hover {
+  background-color: #0069D9;
+}
+
+.upgrades button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+          `,
+          js: `
+// Game state
+let state = {
+  score: 0,
+  perClick: 1,
+  perSecond: 0,
+  clickUpgradeCost: 10,
+  autoUpgradeCost: 50
+};
+
+// DOM elements
+const scoreElement = document.getElementById('score');
+const perClickElement = document.getElementById('per-click');
+const perSecondElement = document.getElementById('per-second');
+const clickButton = document.getElementById('click-btn');
+const upgradeClickButton = document.getElementById('upgrade-click');
+const upgradeAutoButton = document.getElementById('upgrade-auto');
+
+// Click handler
+clickButton.addEventListener('click', () => {
+  state.score += state.perClick;
+  
+  // Add a visual effect when clicking
+  clickButton.classList.add('pulse');
+  setTimeout(() => {
+    clickButton.classList.remove('pulse');
+  }, 300);
+  
+  updateUI();
+});
+
+// Upgrade click handler
+upgradeClickButton.addEventListener('click', () => {
+  if (state.score >= state.clickUpgradeCost) {
+    state.score -= state.clickUpgradeCost;
+    state.perClick += 1;
+    state.clickUpgradeCost = Math.floor(state.clickUpgradeCost * 1.5);
+    upgradeClickButton.textContent = \`Upgrade Click (+1) - Cost: \${state.clickUpgradeCost}\`;
+    updateUI();
+  }
+});
+
+// Upgrade auto handler
+upgradeAutoButton.addEventListener('click', () => {
+  if (state.score >= state.autoUpgradeCost) {
+    state.score -= state.autoUpgradeCost;
+    state.perSecond += 1;
+    state.autoUpgradeCost = Math.floor(state.autoUpgradeCost * 1.5);
+    upgradeAutoButton.textContent = \`Upgrade Auto (+1) - Cost: \${state.autoUpgradeCost}\`;
+    updateUI();
+  }
+});
+
+// Update UI
+function updateUI() {
+  scoreElement.textContent = Math.floor(state.score);
+  perClickElement.textContent = state.perClick;
+  perSecondElement.textContent = state.perSecond;
+  
+  // Update button states
+  upgradeClickButton.disabled = state.score < state.clickUpgradeCost;
+  upgradeAutoButton.disabled = state.score < state.autoUpgradeCost;
+  
+  // Save game state
+  saveGame();
+}
+
+// Auto-increment loop
+setInterval(() => {
+  state.score += state.perSecond / 10;
+  updateUI();
+}, 100);
+
+// Save game state to localStorage
+function saveGame() {
+  try {
+    localStorage.setItem('gameState', JSON.stringify(state));
+  } catch (e) {
+    console.error('Failed to save game state:', e);
+  }
+}
+
+// Load game state from localStorage
+function loadGame() {
+  try {
+    const savedState = localStorage.getItem('gameState');
+    if (savedState) {
+      state = JSON.parse(savedState);
+      updateUI();
+    }
+  } catch (e) {
+    console.error('Failed to load game state:', e);
+  }
+}
+
+// Add some CSS for the click animation
+const style = document.createElement('style');
+style.textContent = \`
+  .pulse {
+    animation: pulse-animation 0.3s;
+  }
+  
+  @keyframes pulse-animation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+\`;
+document.head.appendChild(style);
+
+// Initial UI update
+loadGame();
+updateUI();
+          `,
+          md: `# AI Generated Incremental Game
+
+## About This Game
+This game was generated based on the prompt: "${prompt}"
+
+## How to Play
+1. Click the "Click Me!" button to earn points
+2. Use your points to purchase upgrades
+3. Upgrade your click value to earn more points per click
+4. Upgrade your auto-clicker to earn points automatically
+
+## Game Mechanics
+- **Score**: Your current points
+- **Per Click**: How many points you earn per click
+- **Per Second**: How many points you earn automatically each second
+
+## Upgrades
+- **Upgrade Click**: Increases your points per click by 1
+- **Upgrade Auto**: Increases your points per second by 1
+
+## Tips
+- Focus on auto-clickers early to build passive income
+- Balance your upgrades between click value and auto-clickers
+- The game automatically saves your progress
+
+Enjoy the game!
+          `,
         }
 
-        setStages([...stages, newStage])
-        setCurrentStage(currentStage + 1)
+        // Set the current stage to the new game
+        setCurrentStage(newGame)
 
-        if (currentStage === 4) {
-          setIsComplete(true)
-        }
+        // Save the game to storage
+        saveGameToStorage(newGame)
 
-        // Reset iframe state for new content
-        setIframeLoaded(false)
-        setIframeError(null)
-        setLogs([])
-        setRefreshKey((prev) => prev + 1)
-      }
-    } catch (error: any) {
-      console.error("Error generating game stage:", error)
-      setErrorMessage(error.message || "Failed to generate game stage. Please check your API key and try again.")
-    } finally {
-      setIsGenerating(false)
+        // Update the saved games list
+        setSavedGames((prev) => [...prev, newGame])
+
+        addStreamingMessage(`Generated new game: ${newGame.title}`, "success")
+        setGenerating(false)
+      }, 2000) // Simulate 2 second generation time
+    } catch (error) {
+      console.error("Error generating game:", error)
+      setErrorMessage(`Error generating game: ${error instanceof Error ? error.message : String(error)}`)
+      addStreamingMessage(`Error generating game: ${error instanceof Error ? error.message : String(error)}`, "error")
+      setGenerating(false)
     }
   }
 
-  const handleFixGame = async () => {
-    if (!apiKey || stages.length === 0) {
-      return
-    }
-
-    setIsFixing(true)
-    setErrorMessage(null)
-
-    try {
-      const latestStage = stages[stages.length - 1]
-      const fixedGame = await fixGameCode(latestStage, errorDetails, apiKey)
-
-      // Update the latest stage with the fixed code
-      const updatedStages = [...stages]
-      updatedStages[updatedStages.length - 1] = fixedGame
-      setStages(updatedStages)
-
-      // Reset iframe state for new content
-      setIframeLoaded(false)
-      setIframeError(null)
-      setLogs([])
-      setRefreshKey((prev) => prev + 1)
-      setShowFixDialog(false)
-      setErrorDetails("")
-    } catch (error: any) {
-      console.error("Error fixing game code:", error)
-      setErrorMessage(error.message || "Failed to fix game code. Please try again.")
-    } finally {
-      setIsFixing(false)
-    }
-  }
-
-  const refreshFinalGamePreview = () => {
-    setIframeLoaded(false)
-    setIframeError(null)
-    setLogs([])
-    setRefreshKey((prev) => prev + 1)
-  }
-
-  // Function to open game in a new window with direct game data
+  // Open game in new tab
   const openFullscreenPreview = () => {
-    if (stages.length === 0) return
+    if (!currentStage) return
 
     setIsOpeningNewTab(true)
+    addStreamingMessage("Opening game in new tab...", "info")
 
     try {
-      const latestStage = stages[stages.length - 1]
+      // Save to localStorage
+      const saved = saveGameToStorage(currentStage)
+      if (!saved) {
+        console.warn("Failed to save game using utility function")
+        addStreamingMessage("Warning: Game may not be accessible in new tab", "warning")
 
-      // Ensure the game has an ID
-      if (!latestStage.id) {
-        latestStage.id = `game-${stages.length}-${Date.now()}`
-
-        // Update the stages array with the new ID
-        const updatedStages = [...stages]
-        updatedStages[updatedStages.length - 1] = latestStage
-        setStages(updatedStages)
+        // Try a more minimal approach if the full save fails
+        try {
+          // Try to save just the essential game data
+          const minimalGame = {
+            id: currentStage.id,
+            title: currentStage.title,
+            description: currentStage.description,
+            html: currentStage.html,
+            css: currentStage.css,
+            js: currentStage.js,
+          }
+          localStorage.setItem("minimalLatestGame", JSON.stringify(minimalGame))
+          console.log("Saved minimal game data as fallback")
+        } catch (minimalErr) {
+          console.error("Even minimal save failed:", minimalErr)
+        }
+      } else {
+        console.log("Game data saved successfully")
+        console.log("Game ID:", currentStage.id)
       }
 
-      // Save to localStorage first (as a backup)
-      try {
-        localStorage.setItem("generatedGames", JSON.stringify(stages))
-        console.log("Game data saved to localStorage")
-      } catch (err) {
-        console.warn("Failed to save to localStorage, continuing with URL method:", err)
-      }
+      // Add a delay before opening the new tab to ensure localStorage is updated
+      setTimeout(() => {
+        const gameUrl = `/game/${encodeURIComponent(currentStage.id)}`
+        console.log("Opening game URL:", gameUrl)
 
-      // Create a compressed version of the game data to pass in the URL
-      const gameData = {
-        id: latestStage.id,
-        title: latestStage.title,
-        description: latestStage.description,
-        html: latestStage.html,
-        css: latestStage.css,
-        js: latestStage.js,
-        md: latestStage.md,
-      }
+        addStreamingMessage(`Opening game at URL: ${gameUrl}`, "info")
 
-      // Convert game data to base64 to make it URL-safe
-      const gameDataStr = JSON.stringify(gameData)
-      const gameDataB64 = btoa(encodeURIComponent(gameDataStr))
+        const gameWindow = window.open(gameUrl, "_blank")
 
-      // Open the game in a new tab with the game data in the URL
-      window.open(`/game/${latestStage.id}?data=${gameDataB64}`, "_blank")
+        // Fallback for mobile browsers that might have issues with window.open
+        if (!gameWindow) {
+          console.warn("window.open failed, trying location.href as fallback")
+          addStreamingMessage("Could not open new tab, redirecting instead...", "warning")
 
-      console.log("Game opened in new tab with direct data")
+          // Save a flag to indicate we're coming back from a game
+          localStorage.setItem("returning_from_game", "true")
+
+          // Redirect to the game page
+          window.location.href = gameUrl
+        }
+
+        console.log("Game opened in new tab with ID:", currentStage.id)
+        addStreamingMessage("Game opened in new tab successfully", "success")
+      }, 500) // Add a 500ms delay before opening the new tab
     } catch (error) {
       console.error("Error opening game in new tab:", error)
       setErrorMessage("Failed to open game in new tab: " + (error instanceof Error ? error.message : String(error)))
+      addStreamingMessage(
+        `Error opening game in new tab: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
+      )
     } finally {
       setIsOpeningNewTab(false)
     }
   }
 
-  // Generate iframe content with proper error handling
-  const generateFinalGameIframeContent = () => {
-    if (stages.length === 0) return ""
-
-    const latestStage = stages[stages.length - 1]
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- Add THREE.js library -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <style>
-          html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
-            background-color: white;
-          }
-          #game-container {
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            position: relative;
-          }
-          #error-display {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(255,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            z-index: 9999;
-            max-width: 80%;
-            word-break: break-word;
-          }
-          #debug-panel {
-            position: fixed;
-            top: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px;
-            font-family: monospace;
-            font-size: 10px;
-            z-index: 9999;
-            max-width: 300px;
-            max-height: 200px;
-            overflow: auto;
-            display: none;
-          }
-          * {
-            box-sizing: border-box;
-          }
-          ${latestStage.css}
-        </style>
-      </head>
-      <body>
-        <div id="game-container">
-          ${latestStage.html}
-        </div>
-        <div id="debug-panel"></div>
-        <script>
-          // Check if THREE is available, if not, provide a mock object
-          if (typeof THREE === 'undefined') {
-            console.log('THREE.js not found, creating mock object');
-            window.THREE = {
-              Scene: function() { return { add: function() {} } },
-              PerspectiveCamera: function() { return {} },
-              WebGLRenderer: function() { return { 
-                setSize: function() {}, 
-                render: function() {},
-                domElement: document.createElement('div')
-              } },
-              BoxGeometry: function() { return {} },
-              MeshBasicMaterial: function() { return {} },
-              Mesh: function() { return {} },
-              Vector3: function() { return {} },
-              Clock: function() { return { getElapsedTime: function() { return 0; } } }
-            };
-          }
-          
-          // Debug panel
-          const debugPanel = document.getElementById('debug-panel');
-          const originalConsoleLog = console.log;
-          console.log = function() {
-            originalConsoleLog.apply(console, arguments);
-            if (debugPanel) {
-              const args = Array.from(arguments);
-              const message = args.map(arg => 
-                typeof arg === 'object' ? JSON.stringify(arg) : arg
-              ).join(' ');
-              debugPanel.innerHTML += message + '<br>';
-              debugPanel.style.display = 'block';
-            }
-            
-            // Send log to parent window
-            try {
-              window.parent.postMessage({
-                type: 'gameLog',
-                message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')
-              }, '*');
-            } catch (e) {
-              // Ignore messaging errors
-            }
-          };
-          
-          // Console error handler
-          window.onerror = function(message, source, lineno, colno, error) {
-            console.log('Game error:', message, 'at', source, lineno, colno);
-            
-            // Display error in the iframe
-            var errorDisplay = document.createElement('div');
-            errorDisplay.id = 'error-display';
-            errorDisplay.textContent = 'Error: ' + message;
-            document.body.appendChild(errorDisplay);
-            
-            // Send error to parent window
-            window.parent.postMessage({
-              type: 'finalGameError',
-              error: message,
-              source: source,
-              line: lineno
-            }, '*');
-            
-            return false;
-          };
-          
-          // Log initialization
-          console.log('Final game iframe loaded, initializing...');
-          
-          // Run the game code
-          try {
-            // Wrap in DOMContentLoaded if not already present in the code
-            if (!${latestStage.js.includes("DOMContentLoaded")}) {
-              document.addEventListener('DOMContentLoaded', function() {
-                try {
-                  console.log('DOMContentLoaded fired, running game code...');
-                  ${latestStage.js}
-                  console.log('Game initialization complete');
-                  
-                  // Send success message to parent
-                  window.parent.postMessage({
-                    type: 'finalGameLoaded',
-                    success: true
-                  }, '*');
-                } catch (e) {
-                  console.log('Error during game initialization:', e.message);
-                  var errorDisplay = document.createElement('div');
-                  errorDisplay.id = 'error-display';
-                  errorDisplay.textContent = 'Error: ' + e.message;
-                  document.body.appendChild(errorDisplay);
-                  
-                  // Send error to parent window
-                  window.parent.postMessage({
-                    type: 'finalGameError',
-                    error: e.message
-                  }, '*');
-                }
-              });
-            } else {
-              // Code already has DOMContentLoaded handler
-              console.log('Game code contains DOMContentLoaded handler');
-              ${latestStage.js}
-              
-              // Send success message to parent
-              setTimeout(function() {
-                window.parent.postMessage({
-                  type: 'finalGameLoaded',
-                  success: true
-                }, '*');
-              }, 100);
-            }
-            
-            // Dispatch DOMContentLoaded manually if it might have already fired
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-              console.log('Document already loaded, dispatching DOMContentLoaded manually');
-              setTimeout(() => {
-                const event = new Event('DOMContentLoaded');
-                document.dispatchEvent(event);
-              }, 100);
-            }
-          } catch (e) {
-            console.log('Error executing game code:', e.message);
-            var errorDisplay = document.createElement('div');
-            errorDisplay.id = 'error-display';
-            errorDisplay.textContent = 'Error: ' + e.message;
-            document.body.appendChild(errorDisplay);
-            
-            // Send error to parent window
-            window.parent.postMessage({
-              type: 'finalGameError',
-              error: e.message
-            }, '*');
-          }
-        </script>
-      </body>
-      </html>
-    `
+  // Handle game load event
+  const handleGameLoaded = () => {
+    setGameLoaded(true)
+    addStreamingMessage("Game loaded successfully", "success")
   }
 
-  // Set up message listener for iframe communication
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === "finalGameError") {
-        console.error("Final game error received from iframe:", event.data.error)
-        setIframeError(event.data.error)
-      } else if (event.data.type === "finalGameLoaded") {
-        console.log("Final game loaded successfully in iframe")
-        setIframeLoaded(true)
-      } else if (event.data.type === "gameLog") {
-        console.log("Game log:", event.data.message)
-        setLogs((prev) => [...prev, event.data.message])
-      }
-    }
+  // Handle game error event
+  const handleGameError = (error: string) => {
+    addStreamingMessage(`Game error: ${error}`, "error")
+    setErrorMessage(`Game error: ${error}`)
+  }
 
-    window.addEventListener("message", handleMessage)
-
-    return () => {
-      window.removeEventListener("message", handleMessage)
-    }
-  }, [])
-
-  // Update final game iframe when stages change
-  useEffect(() => {
-    if (finalGameIframeRef.current && stages.length > 0) {
-      setIframeLoaded(false)
-      setIframeError(null)
-      setLogs([])
-      finalGameIframeRef.current.srcdoc = generateFinalGameIframeContent()
-    }
-  }, [stages, refreshKey])
-
-  // Function to reset the game generator
-  const handleReset = () => {
-    if (confirm("Are you sure you want to reset the game generator? This will delete all your progress.")) {
-      setStages([])
-      setCurrentStage(0)
-      setIsComplete(false)
-      setGameTheme("")
-      setShowThemeInput(true)
-      localStorage.removeItem("generatedGames")
-      localStorage.removeItem("gameTheme")
-    }
+  // Handle game log event
+  const handleGameLog = (message: string) => {
+    addStreamingMessage(message, "debug")
   }
 
   return (
-    <div className="space-y-8">
-      {/* Documentation Section */}
-      <PipelineDocumentation />
-
-      {/* API Key Form */}
-      {!apiKey && <ApiKeyForm onApiKeyValidated={handleApiKeyValidated} />}
-
-      {/* Theme Input */}
-      {apiKey && showThemeInput && (
-        <Card className="p-6 bg-white/10 backdrop-blur-sm border-purple-500/30">
-          <h2 className="text-2xl font-bold text-white mb-4">What kind of game would you like to create?</h2>
+    <div className="space-y-6">
+      {/* Game Generation Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Incremental Game Generator</CardTitle>
+          <CardDescription>Enter a prompt to generate a new incremental game or play an existing one</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
-            <p className="text-purple-200">
-              Enter a theme or concept for your game. Be as specific or creative as you'd like!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                placeholder="e.g., space adventure, medieval fantasy, puzzle game..."
-                value={themeInput}
-                onChange={(e) => setThemeInput(e.target.value)}
-                className="flex-grow bg-white/5 border-white/10 text-white"
+            <div className="space-y-2">
+              <Label htmlFor="prompt">Game Prompt</Label>
+              <Textarea
+                id="prompt"
+                placeholder="Describe the incremental game you want to create..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[100px]"
               />
-              <Button
-                onClick={handleStartGeneration}
-                disabled={!themeInput.trim()}
-                className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
-              >
-                Start Creating
-              </Button>
             </div>
-            <p className="text-xs text-purple-300/70">
-              This will be used as the foundation for your game. The AI will build upon this theme through all five
-              stages.
-            </p>
-          </div>
-        </Card>
-      )}
 
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="p-4 bg-red-500/20 border border-red-500/40 rounded-md text-red-200">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold mb-1">Error</h3>
-              <p>{errorMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Game Stages */}
-      {apiKey && !showThemeInput && (
-        <Card className="p-6 bg-white/10 backdrop-blur-sm border-purple-500/30">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Game Evolution Pipeline</h2>
-              <p className="text-purple-200 text-sm mt-1">Theme: {gameTheme}</p>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="text-purple-200 text-sm whitespace-nowrap">
-                Stage {currentStage}/5 {isComplete ? "(Complete)" : ""}
-              </div>
+            <div className="flex flex-wrap gap-2">
               <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || isComplete}
-                className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto"
+                onClick={generateGame}
+                disabled={generating || !prompt.trim()}
+                className="bg-purple-600 hover:bg-purple-700"
               >
-                {isGenerating ? (
+                {generating ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Generating...
                   </>
-                ) : currentStage === 0 ? (
-                  "Generate First Stage"
-                ) : currentStage === 5 ? (
-                  "Generation Complete!"
                 ) : (
-                  "Generate Next Stage"
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate Game
+                  </>
                 )}
               </Button>
+
               <Button
-                onClick={handleReset}
-                variant="outline"
-                className="border-red-500/50 hover:bg-red-700/30 text-red-300 hover:text-red-100"
+                onClick={openFullscreenPreview}
+                disabled={isOpeningNewTab || !currentStage}
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                Reset
+                <Play className="h-4 w-4 mr-2" />
+                Play in New Tab
               </Button>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            {stages.map((stage, index) => (
-              <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
-            ))}
-
-            {stages.length === 0 && (
-              <div className="text-center py-12 text-purple-200">
-                <p className="text-xl mb-4">Ready to build your "{gameTheme}" game!</p>
-                <p>Click the "Generate First Stage" button above to start creating your game.</p>
-                <p className="mt-4 text-sm opacity-70">
-                  Each stage will build upon the previous one, creating a more complex and engaging game.
-                </p>
-              </div>
+            {errorMessage && (
+              <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-md">{errorMessage}</div>
             )}
           </div>
-        </Card>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* Final Game Preview */}
-      {stages.length > 0 && (
-        <Card className="p-6 bg-white/10 backdrop-blur-sm border-purple-500/30">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-white">Final Game</h2>
-            <div className="flex gap-2">
-              <Button
-                onClick={refreshFinalGamePreview}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <Button
-                onClick={() => setShowFixDialog(true)}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30"
-                disabled={isFixing}
-              >
-                <Wrench className="h-4 w-4 mr-2" />
-                Fix Game
-              </Button>
-              <Button
-                onClick={openFullscreenPreview}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30"
-                disabled={isOpeningNewTab}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open in New Tab
-              </Button>
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="mb-4">
-              <TabsList className="bg-purple-950/50 w-full justify-start">
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="logs">Logs</TabsTrigger>
-                <TabsTrigger value="md">Documentation</TabsTrigger>
+      {/* Game Preview */}
+      {currentStage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{currentStage.title}</CardTitle>
+            <CardDescription>{currentStage.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="game" className="flex items-center">
+                  <Play className="h-4 w-4 mr-2" />
+                  Game
+                </TabsTrigger>
+                <TabsTrigger value="code" className="flex items-center">
+                  <Code className="h-4 w-4 mr-2" />
+                  Code
+                </TabsTrigger>
+                <TabsTrigger value="docs" className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Documentation
+                </TabsTrigger>
               </TabsList>
-            </div>
 
-            <TabsContent value="preview" className="m-0">
-              <div className="bg-white rounded-lg overflow-hidden relative" style={{ height: "600px" }}>
-                {!iframeLoaded && !iframeError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 z-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-600">Loading game preview...</p>
+              <TabsContent value="game" className="m-0">
+                <div className="bg-white border rounded-lg overflow-hidden" style={{ height: "500px" }}>
+                  <div ref={gameContainerRef} className="w-full h-full">
+                    <SuperRobustGameRenderer
+                      html={currentStage.html}
+                      css={currentStage.css}
+                      js={currentStage.js}
+                      id={currentStage.id}
+                      onLog={handleGameLog}
+                      onError={handleGameError}
+                      onLoaded={handleGameLoaded}
+                    />
                   </div>
-                )}
+                </div>
 
-                {iframeError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 z-10 p-4">
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 max-w-md">
-                      <h3 className="font-bold">Error Loading Game</h3>
-                      <p className="text-sm">{iframeError}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={refreshFinalGamePreview} className="bg-purple-600 hover:bg-purple-700">
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Retry
-                      </Button>
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={openFullscreenPreview} className="bg-purple-600 hover:bg-purple-700">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open in Full Screen
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="code" className="m-0">
+                <Tabs value={codeTab} onValueChange={setCodeTab}>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="html">HTML</TabsTrigger>
+                    <TabsTrigger value="css">CSS</TabsTrigger>
+                    <TabsTrigger value="js">JavaScript</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="html" className="m-0">
+                    <div className="relative">
                       <Button
-                        onClick={() => setShowFixDialog(true)}
-                        className="bg-purple-600 hover:bg-purple-700"
-                        disabled={isFixing}
-                      >
-                        <Wrench className="h-4 w-4 mr-2" />
-                        Fix Game
-                      </Button>
-                      <Button
-                        onClick={openFullscreenPreview}
+                        size="sm"
                         variant="outline"
-                        className="border-purple-500/50 hover:bg-purple-700/30"
-                        disabled={isOpeningNewTab}
+                        className="absolute top-2 right-2 z-10"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentStage.html)
+                          addStreamingMessage("HTML code copied to clipboard", "info")
+                        }}
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Try in New Tab
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
                       </Button>
+                      <pre className="bg-gray-800 text-gray-200 p-4 rounded-lg overflow-auto h-[400px]">
+                        <code>{currentStage.html}</code>
+                      </pre>
                     </div>
-                  </div>
-                )}
+                  </TabsContent>
 
-                <iframe
-                  key={refreshKey}
-                  ref={finalGameIframeRef}
-                  style={{ width: "100%", height: "100%", border: "none" }}
-                  title="Final Game Preview"
-                  sandbox="allow-scripts allow-popups"
-                />
-              </div>
-            </TabsContent>
+                  <TabsContent value="css" className="m-0">
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute top-2 right-2 z-10"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentStage.css)
+                          addStreamingMessage("CSS code copied to clipboard", "info")
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
+                      <pre className="bg-gray-800 text-gray-200 p-4 rounded-lg overflow-auto h-[400px]">
+                        <code>{currentStage.css}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
 
-            <TabsContent value="logs" className="m-0">
-              <div className="bg-gray-900 p-4 overflow-auto h-[400px] rounded-lg">
-                <div className="font-mono text-sm text-gray-300">
-                  {logs.length > 0 ? (
-                    logs.map((log, index) => (
-                      <div key={index} className="py-1 border-b border-gray-800">
-                        {log}
-                      </div>
-                    ))
+                  <TabsContent value="js" className="m-0">
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute top-2 right-2 z-10"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentStage.js)
+                          addStreamingMessage("JavaScript code copied to clipboard", "info")
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
+                      <pre className="bg-gray-800 text-gray-200 p-4 rounded-lg overflow-auto h-[400px]">
+                        <code>{currentStage.js}</code>
+                      </pre>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+
+              <TabsContent value="docs" className="m-0">
+                <div className="bg-white border rounded-lg p-6 prose max-w-none h-[500px] overflow-auto">
+                  {currentStage.md ? (
+                    <div dangerouslySetInnerHTML={{ __html: currentStage.md.replace(/\n/g, "<br>") || "" }} />
                   ) : (
-                    <p className="text-gray-500 italic">No logs available. Run the game to see console output here.</p>
+                    <p>No documentation available.</p>
                   )}
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="md" className="m-0">
-              <div className="bg-gray-900 p-4 overflow-auto h-[400px] rounded-lg">
-                <div className="prose prose-invert max-w-none">
-                  {stages.length > 0 && stages[stages.length - 1].md ? (
-                    <ReactMarkdown>{stages[stages.length - 1].md}</ReactMarkdown>
-                  ) : (
-                    <p className="text-gray-400">No documentation available for this stage.</p>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-4 p-3 bg-yellow-500/10 rounded border border-yellow-500/20 flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-yellow-300">
-              <p className="font-medium">Game not displaying correctly?</p>
-              <p className="mt-1">
-                Try the "Refresh" button to reload the game, or use the "Fix Game" button to have AI fix rendering
-                issues. For the best experience, click "Open in New Tab" to play the game in a dedicated browser window.
-              </p>
-            </div>
-          </div>
-
-          {/* Download Game Button */}
-          {stages.length > 0 && (
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={openFullscreenPreview}
-                className="bg-purple-600 hover:bg-purple-700"
-                disabled={isOpeningNewTab}
-              >
-                {isOpeningNewTab ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Opening...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Play Full Game
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
         </Card>
       )}
 
-      {/* Fix Game Dialog */}
-      <Dialog open={showFixDialog} onOpenChange={setShowFixDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Fix Game Rendering Issues</DialogTitle>
-            <DialogDescription>
-              Describe the issues you're experiencing with the game rendering. The AI will attempt to fix the code.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Textarea
-              placeholder="e.g., The game shows a white screen, elements are not visible, controls don't work..."
-              value={errorDetails}
-              onChange={(e) => setErrorDetails(e.target.value)}
-              className="min-h-[100px]"
-            />
+      {/* Saved Games */}
+      {savedGames.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Saved Games</CardTitle>
+            <CardDescription>Your previously generated games</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedGames.map((game) => (
+                <Card key={game.id} className="overflow-hidden">
+                  <CardHeader className="bg-gray-50 p-4">
+                    <CardTitle className="text-md">{game.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-gray-700 mb-4 line-clamp-2">{game.description}</p>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setCurrentStage(game)
+                          addStreamingMessage(`Loaded game: ${game.title}`, "info")
+                        }}
+                      >
+                        Load Game
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Console Output */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Console Output</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-gray-900 text-gray-200 p-4 rounded-lg h-[200px] overflow-auto font-mono text-sm">
+            {logs.length > 0 ? (
+              logs.map((log, index) => (
+                <div key={index} className="py-1 border-b border-gray-800">
+                  {log}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 italic">No logs available.</p>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFixDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleFixGame} disabled={isFixing} className="bg-purple-600 hover:bg-purple-700">
-              {isFixing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Fixing...
-                </>
-              ) : (
-                <>
-                  <Wrench className="mr-2 h-4 w-4" />
-                  Fix Game
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   )
 }
+
+export default GameGenerator

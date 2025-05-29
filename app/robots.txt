@@ -1,6 +1,0 @@
-# Allow all crawlers
-User-agent: *
-Allow: /
-
-# Sitemap
-Sitemap: https://incremental-game-generator.vercel.app/sitemap.xml
