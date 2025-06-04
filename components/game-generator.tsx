@@ -13,6 +13,7 @@ import { Textarea } from "./ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
+import { Progress } from "./ui/progress"
 import { saveGames } from "@/lib/game-utils"
 
 export type GameStageData = {
@@ -559,9 +560,10 @@ export default function GameGenerator() {
       {apiKey && !showThemeInput && (
         <Card className="p-6 bg-white/10 backdrop-blur-sm border-purple-500/30">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-bold text-white">Game Evolution Pipeline</h2>
               <p className="text-purple-200 text-sm mt-1">Theme: {gameTheme}</p>
+              <Progress value={(currentStage / 5) * 100} className="mt-2" />
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="text-purple-200 text-sm whitespace-nowrap">
