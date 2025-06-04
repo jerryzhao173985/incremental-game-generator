@@ -1,7 +1,7 @@
 {
   "name": "Incremental Game Generator",
   "short_name": "Game Gen",
-  "description": "Watch as AI builds a game through five progressive iterations",
+  "description": "Watch as AI builds a game through multiple stages (five by default)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#4c1d95",
