@@ -46,6 +46,7 @@ export default function GameGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const [additionalInstructions, setAdditionalInstructions] = useState("")
 
   // Load saved games from localStorage on component mount
   useEffect(() => {
@@ -127,7 +128,13 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const newStage = await generateGameStage(
+        currentStage,
+        gameTheme || themeInput,
+        stages,
+        additionalInstructions,
+        apiKey,
+      )
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -150,6 +157,7 @@ export default function GameGenerator() {
         setIframeError(null)
         setLogs([])
         setRefreshKey((prev) => prev + 1)
+        setAdditionalInstructions("")
       }
     } catch (error: any) {
       console.error("Error generating game stage:", error)
@@ -612,6 +620,17 @@ export default function GameGenerator() {
               </div>
             )}
           </div>
+
+          {currentStage < 5 && (
+            <div className="mt-6">
+              <Textarea
+                placeholder="Additional instructions for the next stage (optional)"
+                value={additionalInstructions}
+                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
+          )}
         </Card>
       )}
 
