@@ -7,6 +7,9 @@ import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
 import GameStage from "./game-stage"
 import ApiKeyForm from "./api-key-form"
 import PipelineDocumentation from "./pipeline-documentation"
+import TemplateSelector from "./template-selector"
+import { GameTemplate } from "@/lib/templates"
+import { compressStages, decompressStages } from "@/lib/game-utils"
 import { AlertCircle, Download, ExternalLink, Loader2, RefreshCw, Wrench } from "lucide-react"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
@@ -45,6 +48,11 @@ export default function GameGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const [totalStages, setTotalStages] = useState<number>(5)
+  const [stagePlans, setStagePlans] = useState<string[]>([])
+  const [feedbacks, setFeedbacks] = useState<string[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null)
+  const [model, setModel] = useState("gpt-4o")
 
   // Load saved games from localStorage on component mount
   useEffect(() => {
@@ -64,8 +72,18 @@ export default function GameGenerator() {
             setStages(games)
             setCurrentStage(games.length)
             setGameTheme(localStorage.getItem("gameTheme") || "")
+            const plan = localStorage.getItem("stagePlans")
+            if (plan) setStagePlans(JSON.parse(plan))
+            const fb = localStorage.getItem("stageFeedbacks")
+            if (fb) setFeedbacks(JSON.parse(fb))
+            const storedTotal = localStorage.getItem("totalStages")
+            if (storedTotal) setTotalStages(parseInt(storedTotal))
+            const modelStored = localStorage.getItem("modelChoice")
+            if (modelStored) setModel(modelStored)
+            const templateStored = localStorage.getItem("selectedTemplate")
+            if (templateStored) setSelectedTemplate(JSON.parse(templateStored))
             setShowThemeInput(false)
-            if (games.length === 5) {
+            if (games.length === totalStages) {
               setIsComplete(true)
             }
           }
@@ -112,6 +130,14 @@ export default function GameGenerator() {
     }
 
     setGameTheme(themeInput)
+    localStorage.setItem("totalStages", String(totalStages))
+    localStorage.setItem("stagePlans", JSON.stringify(stagePlans))
+    localStorage.setItem("modelChoice", model)
+    if (selectedTemplate) {
+      localStorage.setItem("selectedTemplate", JSON.stringify(selectedTemplate))
+    } else {
+      localStorage.removeItem("selectedTemplate")
+    }
     setShowThemeInput(false)
     handleGenerate()
   }
@@ -126,7 +152,19 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const plan = stagePlans[currentStage] || ""
+      const feedback = feedbacks[currentStage] || ""
+      const newStage = await generateGameStage(
+        currentStage,
+        gameTheme || themeInput,
+        stages,
+        apiKey,
+        model,
+        plan,
+        feedback,
+        selectedTemplate,
+        totalStages,
+      )
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -140,7 +178,7 @@ export default function GameGenerator() {
         setStages([...stages, newStage])
         setCurrentStage(currentStage + 1)
 
-        if (currentStage === 4) {
+        if (currentStage + 1 === totalStages) {
           setIsComplete(true)
         }
 
@@ -168,7 +206,7 @@ export default function GameGenerator() {
 
     try {
       const latestStage = stages[stages.length - 1]
-      const fixedGame = await fixGameCode(latestStage, errorDetails, apiKey)
+      const fixedGame = await fixGameCode(latestStage, errorDetails, apiKey, model)
 
       // Update the latest stage with the fixed code
       const updatedStages = [...stages]
@@ -187,6 +225,36 @@ export default function GameGenerator() {
       setErrorMessage(error.message || "Failed to fix game code. Please try again.")
     } finally {
       setIsFixing(false)
+    }
+  }
+
+  const handleRevert = (index: number) => {
+    const newStages = stages.slice(0, index + 1)
+    setStages(newStages)
+    setCurrentStage(index + 1)
+    setIsComplete(false)
+    saveGames(newStages)
+  }
+
+  const handleExport = () => {
+    const data = compressStages(stages)
+    navigator.clipboard.writeText(data).then(() => {
+      alert("Game data copied to clipboard")
+    })
+  }
+
+  const handleImport = async () => {
+    const data = prompt("Paste exported game data")
+    if (data) {
+      try {
+        const imported = decompressStages(data)
+        setStages(imported)
+        setCurrentStage(imported.length)
+        setIsComplete(imported.length === totalStages)
+        saveGames(imported)
+      } catch (e) {
+        alert("Invalid data")
+      }
     }
   }
 
@@ -519,24 +587,58 @@ export default function GameGenerator() {
             <p className="text-purple-200">
               Enter a theme or concept for your game. Be as specific or creative as you'd like!
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <Input
+              placeholder="e.g., space adventure, medieval fantasy, puzzle game..."
+              value={themeInput}
+              onChange={(e) => setThemeInput(e.target.value)}
+              className="bg-white/5 border-white/10 text-white"
+            />
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-purple-200">Stages:</label>
               <Input
-                placeholder="e.g., space adventure, medieval fantasy, puzzle game..."
-                value={themeInput}
-                onChange={(e) => setThemeInput(e.target.value)}
-                className="flex-grow bg-white/5 border-white/10 text-white"
+                type="number"
+                min={1}
+                max={10}
+                value={totalStages}
+                onChange={(e) => setTotalStages(parseInt(e.target.value))}
+                className="w-20 bg-white/5 border-white/10 text-white"
               />
-              <Button
-                onClick={handleStartGeneration}
-                disabled={!themeInput.trim()}
-                className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+              <label className="text-sm text-purple-200">Model:</label>
+              <select
+                className="bg-white/5 border-white/10 text-white p-2 rounded"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
               >
-                Start Creating
-              </Button>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="offline">Offline</option>
+              </select>
             </div>
+            <TemplateSelector onSelect={setSelectedTemplate} />
+            <div className="space-y-2">
+              {Array.from({ length: totalStages }).map((_, i) => (
+                <Textarea
+                  key={i}
+                  placeholder={`Stage ${i + 1} focus (optional)`}
+                  value={stagePlans[i] || ""}
+                  onChange={(e) => {
+                    const plans = [...stagePlans]
+                    plans[i] = e.target.value
+                    setStagePlans(plans)
+                  }}
+                  className="min-h-[60px]"
+                />
+              ))}
+            </div>
+            <Button
+              onClick={handleStartGeneration}
+              disabled={!themeInput.trim()}
+              className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+            >
+              Start Creating
+            </Button>
             <p className="text-xs text-purple-300/70">
-              This will be used as the foundation for your game. The AI will build upon this theme through all five
-              stages.
+              Your settings and progress will be saved in your browser so you can return later.
             </p>
           </div>
         </Card>
@@ -579,7 +681,7 @@ export default function GameGenerator() {
                   </>
                 ) : currentStage === 0 ? (
                   "Generate First Stage"
-                ) : currentStage === 5 ? (
+                ) : currentStage === totalStages ? (
                   "Generation Complete!"
                 ) : (
                   "Generate Next Stage"
@@ -597,8 +699,30 @@ export default function GameGenerator() {
 
           <div className="space-y-4">
             {stages.map((stage, index) => (
-              <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
+              <GameStage
+                key={index}
+                stageNumber={index + 1}
+                stageData={stage}
+                isLatest={index === stages.length - 1}
+                onRevert={index < stages.length - 1 ? () => handleRevert(index) : undefined}
+              />
             ))}
+
+            {stages.length > 0 && !isComplete && (
+              <div className="space-y-2">
+                <p className="text-purple-200">Feedback or requests for the next stage:</p>
+                <Textarea
+                  value={feedbacks[currentStage] || ""}
+                  onChange={(e) => {
+                    const fbs = [...feedbacks]
+                    fbs[currentStage] = e.target.value
+                    setFeedbacks(fbs)
+                    localStorage.setItem("stageFeedbacks", JSON.stringify(fbs))
+                  }}
+                  className="min-h-[80px]"
+                />
+              </div>
+            )}
 
             {stages.length === 0 && (
               <div className="text-center py-12 text-purple-200">
@@ -644,6 +768,12 @@ export default function GameGenerator() {
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open in New Tab
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="border-purple-500/50 hover:bg-purple-700/30">
+                Export
+              </Button>
+              <Button onClick={handleImport} variant="outline" className="border-purple-500/50 hover:bg-purple-700/30">
+                Import
               </Button>
             </div>
           </div>
