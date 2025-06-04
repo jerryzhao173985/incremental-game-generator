@@ -474,7 +474,10 @@ Ensure the game initializes properly with DOMContentLoaded.`
       // Preserve the original ID
       fixedGame.id = gameData.id
 
-      // Add explanation of fixes to the markdown documentation
+      // Ensure markdown exists before updating it
+      fixedGame.md = fixedGame.md || ""
+
+      // Add explanation of fixes to the markdown documentation if not already present
       if (!fixedGame.md.includes("## Fixes Applied")) {
         fixedGame.md +=
           "\n\n## Fixes Applied\n\n" +
