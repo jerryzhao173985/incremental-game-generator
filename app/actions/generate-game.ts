@@ -1,6 +1,7 @@
 "use server"
 
 import type { GameStageData } from "@/components/game-generator"
+import type { GameTemplate } from "@/lib/templates"
 
 // Interface for stage specifications
 interface StageSpec {
@@ -18,6 +19,10 @@ async function generateStageSpec(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  model: string,
+  stagePlan: string,
+  feedback: string,
+  totalStages: number,
 ): Promise<StageSpec> {
   try {
     const stageDescriptions = [
@@ -30,7 +35,7 @@ async function generateStageSpec(
 
     let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5: ${stageDescriptions[stageNumber]}.
+This is stage ${stageNumber + 1} of ${totalStages}: ${stageDescriptions[stageNumber] || stageDescriptions[stageDescriptions.length - 1]}.
 
 Please create detailed specifications for this stage of the game development. These specifications will be used to guide the actual code implementation.
 `
@@ -112,6 +117,13 @@ Please create detailed specifications for this stage of the game development. Th
         break
     }
 
+    if (stagePlan) {
+      prompt += `\n\nUSER REQUESTS FOR THIS STAGE:\n${stagePlan}`
+    }
+    if (feedback) {
+      prompt += `\n\nFEEDBACK FROM PREVIOUS STAGE:\n${feedback}`
+    }
+
     prompt += `\nReturn your response in the following JSON format:
 {
   "title": "Game Title - Stage ${stageNumber + 1}",
@@ -134,7 +146,7 @@ Focus on making the game fun and engaging for players.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using GPT-4o for specifications
+        model,
         messages: [
           {
             role: "system",
@@ -176,7 +188,27 @@ export async function generateGameStage(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  model: string,
+  stagePlan: string,
+  feedback: string,
+  template?: GameTemplate | null,
+  totalStages: number,
 ): Promise<GameStageData> {
+  if (model === "offline") {
+    if (template) {
+      return { ...template, md: `# ${template.title}\n\n${template.description}`, id: `offline-${Date.now()}` }
+    }
+    return {
+      title: "Offline Stage",
+      description: "Offline mode placeholder stage.",
+      html: `<div id="game-container">Offline mode active</div>`,
+      css: "",
+      js: "",
+      md: "# Offline Mode\n\nNo AI generation.",
+      id: `offline-${Date.now()}`,
+    }
+  }
+
   if (!apiKey || typeof apiKey !== "string") {
     return {
       title: "API Key Missing",
@@ -192,7 +224,7 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey, model, stagePlan, feedback, totalStages)
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -200,7 +232,7 @@ export async function generateGameStage(
 
     let codePrompt = `You are an expert HTML5 game developer creating a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5.
+This is stage ${stageNumber + 1} of ${totalStages}.
 
 I'll provide you with detailed specifications for this stage, and you need to implement them in code.
 
@@ -264,8 +296,15 @@ ${latestStage.js}
 \`\`\`
 
 You MUST build upon this code, enhancing it according to the specifications above. Do not start from scratch.
-Ensure you maintain the core functionality while adding the new features.
+      Ensure you maintain the core functionality while adding the new features.
 `
+    }
+
+    if (stagePlan) {
+      codePrompt += `\n\nUSER REQUESTS FOR THIS STAGE:\n${stagePlan}`
+    }
+    if (feedback) {
+      codePrompt += `\n\nFEEDBACK FROM PREVIOUS STAGE:\n${feedback}`
     }
 
     codePrompt += `\nReturn your response in the following JSON format:
@@ -303,7 +342,7 @@ Ensure the HTML, CSS, and JavaScript work together properly and the game is func
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o", // Using GPT-4o for implementation
+          model,
           messages: [
             {
               role: "system",
@@ -373,6 +412,7 @@ export async function fixGameCode(
   gameData: GameStageData,
   errorDetails: string,
   apiKey: string,
+  model: string = "gpt-4o",
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
     throw new Error("API key is required to fix game code")
@@ -441,7 +481,7 @@ Ensure the game initializes properly with DOMContentLoaded.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using GPT-4o for fixing
+        model,
         messages: [
           {
             role: "system",
