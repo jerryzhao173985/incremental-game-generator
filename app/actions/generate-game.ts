@@ -339,7 +339,9 @@ Ensure the HTML, CSS, and JavaScript work together properly and the game is func
         }
 
         // Add stage specifications to the markdown documentation
-        parsedResponse.md = `# ${parsedResponse.title}\n\n${parsedResponse.description}\n\n## Stage ${stageNumber + 1} Specifications\n\n### Objectives\n${stageSpec.objectives.map((obj) => `- ${obj}`).join("\n")}\n\n### Features\n${stageSpec.features.map((feat) => `- ${feat}`).join("\n")}\n\n### Technical Requirements\n${stageSpec.technicalRequirements.map((req) => `- ${req}`).join("\n")}\n\n### User Experience\n${stageSpec.userExperience.map((ux) => `- ${ux}`).join("\n")}\n\n### Improvements\n${stageSpec.improvements.map((imp) => `- ${imp}`).join("\n")}\n\n## Implementation Details\n\n${parsedResponse.md.split("# ")[1]?.split("\n\n").slice(1).join("\n\n") || ""}`
+        const details = parsedResponse.md.split("# ")[1]
+        const rest = details ? details.split("\n\n").slice(1).join("\n\n") : ""
+        parsedResponse.md = `# ${parsedResponse.title}\n\n${parsedResponse.description}\n\n## Stage ${stageNumber + 1} Specifications\n\n### Objectives\n${stageSpec.objectives.map((obj) => `- ${obj}`).join("\n")}\n\n### Features\n${stageSpec.features.map((feat) => `- ${feat}`).join("\n")}\n\n### Technical Requirements\n${stageSpec.technicalRequirements.map((req) => `- ${req}`).join("\n")}\n\n### User Experience\n${stageSpec.userExperience.map((ux) => `- ${ux}`).join("\n")}\n\n### Improvements\n${stageSpec.improvements.map((imp) => `- ${imp}`).join("\n")}\n\n## Implementation Details\n\n${rest}`
 
         // Add a unique ID to the game data
         parsedResponse.id = `game-${stageNumber + 1}-${Date.now()}`
