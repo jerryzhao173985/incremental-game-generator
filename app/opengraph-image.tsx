@@ -31,7 +31,7 @@ export default async function Image() {
       }}
     >
       <div style={{ fontSize: 64, fontWeight: "bold", marginBottom: 20 }}>Incremental Game Generator</div>
-      <div style={{ fontSize: 32, opacity: 0.8 }}>Watch AI build a game through five progressive iterations</div>
+      <div style={{ fontSize: 32, opacity: 0.8 }}>Watch AI build a game through multiple stages (five by default)</div>
     </div>,
     // ImageResponse options
     {
