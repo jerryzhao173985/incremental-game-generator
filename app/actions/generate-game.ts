@@ -18,6 +18,7 @@ async function generateStageSpec(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  stageCount: number,
 ): Promise<StageSpec> {
   try {
     const stageDescriptions = [
@@ -28,9 +29,9 @@ async function generateStageSpec(
       "Final polish with optimizations and special effects",
     ]
 
-    let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game. 
+    let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game.
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5: ${stageDescriptions[stageNumber]}.
+This is stage ${stageNumber + 1} of ${stageCount}: ${stageDescriptions[stageNumber] ?? "Additional improvements and features"}.
 
 Please create detailed specifications for this stage of the game development. These specifications will be used to guide the actual code implementation.
 `
@@ -52,63 +53,70 @@ Please create detailed specifications for this stage of the game development. Th
     switch (stageNumber) {
       case 0:
         prompt += `\nFor this first stage, focus on:
-- Basic game structure and core mechanics
-- Essential UI elements and controls
-- Fundamental gameplay loop
-- Visual identity related to the theme
-- Responsive design that works in iframe environments
-- Ensure the game is playable and fun even at this early stage
-- Make sure all game elements are visible and properly positioned
-- Use console.log statements to help with debugging
-- Ensure the game initializes properly with DOMContentLoaded`
+        - Basic game structure and core mechanics
+        - Essential UI elements and controls
+        - Fundamental gameplay loop
+        - Visual identity related to the theme
+        - Responsive design that works in iframe environments
+        - Ensure the game is playable and fun even at this early stage
+        - Make sure all game elements are visible and properly positioned
+        - Use console.log statements to help with debugging
+        - Ensure the game initializes properly with DOMContentLoaded`
         break
       case 1:
         prompt += `\nFor this second stage, focus on:
-- Enhanced game mechanics with more depth
-- Improved user interactions and controls
-- Game progression systems
-- Additional visual elements and feedback
-- Better responsiveness and mobile support
-- Ensure all core gameplay elements are fully implemented
-- Make sure all game elements are visible and properly positioned
-- Use console.log statements to help with debugging
-- Ensure the game initializes properly with DOMContentLoaded`
+        - Enhanced game mechanics with more depth
+        - Improved user interactions and controls
+        - Game progression systems
+        - Additional visual elements and feedback
+        - Better responsiveness and mobile support
+        - Ensure all core gameplay elements are fully implemented
+        - Make sure all game elements are visible and properly positioned
+        - Use console.log statements to help with debugging
+        - Ensure the game initializes properly with DOMContentLoaded`
         break
       case 2:
         prompt += `\nFor this third stage, focus on:
-- Complete game mechanics and systems
-- Polished user interface with clear feedback
-- Full game loop (start, play, end/restart)
-- Refined visuals with animations
-- Sound effects or visual cues for important actions
-- The game should feel complete and polished at this stage
-- Make sure all game elements are visible and properly positioned
-- Use console.log statements to help with debugging
-- Ensure the game initializes properly with DOMContentLoaded`
+        - Complete game mechanics and systems
+        - Polished user interface with clear feedback
+        - Full game loop (start, play, end/restart)
+        - Refined visuals with animations
+        - Sound effects or visual cues for important actions
+        - The game should feel complete and polished at this stage
+        - Make sure all game elements are visible and properly positioned
+        - Use console.log statements to help with debugging
+        - Ensure the game initializes properly with DOMContentLoaded`
         break
       case 3:
-        prompt += `\nFor this fourth stage, focus on:
-- Advanced game mechanics or algorithms
-- Sophisticated scoring or achievement systems
-- Special effects or advanced animations
-- Additional game modes or challenges
-- Enhanced user experience features
-- Take the game beyond the basics with more sophisticated features
-- Make sure all game elements are visible and properly positioned
-- Use console.log statements to help with debugging
-- Ensure the game initializes properly with DOMContentLoaded`
-        break
-      case 4:
-        prompt += `\nFor this final stage, focus on:
-- Final visual polish and special effects
-- Performance optimizations
-- Easter eggs or special features
-- Final balance adjustments
-- Any missing quality-of-life features
-- Perfect the game experience with those final touches that make it special
-- Make sure all game elements are visible and properly positioned
-- Use console.log statements to help with debugging
-- Ensure the game initializes properly with DOMContentLoaded`
+        if (stageCount > 4) {
+          prompt += `\nFor this fourth stage, focus on:
+          - Advanced game mechanics or algorithms
+          - Sophisticated scoring or achievement systems
+          - Special effects or advanced animations
+          - Additional game modes or challenges
+          - Enhanced user experience features
+          - Take the game beyond the basics with more sophisticated features
+          - Make sure all game elements are visible and properly positioned
+          - Use console.log statements to help with debugging
+          - Ensure the game initializes properly with DOMContentLoaded`
+          break
+        }
+        // fall through for generic or final stages
+      default:
+        if (stageNumber === stageCount - 1) {
+          prompt += `\nFor this final stage, focus on:
+          - Final visual polish and special effects
+          - Performance optimizations
+          - Easter eggs or special features
+          - Final balance adjustments
+          - Any missing quality-of-life features
+          - Perfect the game experience with those final touches that make it special
+          - Make sure all game elements are visible and properly positioned
+          - Use console.log statements to help with debugging
+          - Ensure the game initializes properly with DOMContentLoaded`
+        } else {
+          prompt += `\nFor this stage, focus on adding new features and improvements that build upon the previous stages.`
+        }
         break
     }
 
@@ -176,6 +184,7 @@ export async function generateGameStage(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  stageCount: number,
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
     return {
@@ -192,7 +201,7 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey, stageCount)
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -200,7 +209,7 @@ export async function generateGameStage(
 
     let codePrompt = `You are an expert HTML5 game developer creating a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5.
+This is stage ${stageNumber + 1} of ${stageCount}.
 
 I'll provide you with detailed specifications for this stage, and you need to implement them in code.
 

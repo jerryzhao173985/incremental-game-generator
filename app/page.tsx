@@ -7,7 +7,7 @@ export default function Home() {
         <header className="text-center mb-8 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4">Incremental Game Generator</h1>
           <p className="text-lg sm:text-xl text-purple-200 max-w-2xl mx-auto">
-            Watch as AI builds a game through five progressive iterations, each one adding new features and complexity
+            Watch as AI builds a game through multiple progressive iterations, each one adding new features and complexity
           </p>
         </header>
 
