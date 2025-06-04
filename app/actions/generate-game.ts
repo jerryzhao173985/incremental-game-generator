@@ -18,6 +18,7 @@ async function generateStageSpec(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  instructions?: string,
 ): Promise<StageSpec> {
   try {
     const stageDescriptions = [
@@ -28,12 +29,16 @@ async function generateStageSpec(
       "Final polish with optimizations and special effects",
     ]
 
-    let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game. 
+  let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game.
 The game theme is: ${theme}.
 This is stage ${stageNumber + 1} of 5: ${stageDescriptions[stageNumber]}.
 
 Please create detailed specifications for this stage of the game development. These specifications will be used to guide the actual code implementation.
 `
+
+    if (instructions && instructions.trim().length > 0) {
+      prompt += `\nUser additional instructions for this stage:\n${instructions}\n`
+    }
 
     // Add context from previous stages if they exist
     if (previousStages.length > 0) {
@@ -176,6 +181,7 @@ export async function generateGameStage(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  instructions?: string,
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
     return {
@@ -192,7 +198,7 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey, instructions)
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -221,6 +227,8 @@ ${stageSpec.userExperience.map((ux) => `- ${ux}`).join("\n")}
 
 Improvements Over Previous Stage:
 ${stageSpec.improvements.map((imp) => `- ${imp}`).join("\n")}
+
+${instructions && instructions.trim().length > 0 ? `Additional User Instructions:\n${instructions}` : ""}
 
 IMPORTANT BROWSER COMPATIBILITY REQUIREMENTS:
 1. The game MUST work properly when embedded in an iframe AND when opened in a new browser window

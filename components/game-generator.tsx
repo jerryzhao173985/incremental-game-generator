@@ -35,6 +35,7 @@ export default function GameGenerator() {
   const [gameTheme, setGameTheme] = useState("")
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [themeInput, setThemeInput] = useState("")
+  const [additionalInstructions, setAdditionalInstructions] = useState("")
   const [showThemeInput, setShowThemeInput] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [iframeError, setIframeError] = useState<string | null>(null)
@@ -127,7 +128,13 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const newStage = await generateGameStage(
+        currentStage,
+        gameTheme || themeInput,
+        stages,
+        apiKey,
+        additionalInstructions,
+      )
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -150,12 +157,14 @@ export default function GameGenerator() {
         setIframeError(null)
         setLogs([])
         setRefreshKey((prev) => prev + 1)
+        setAdditionalInstructions("")
       }
     } catch (error: any) {
       console.error("Error generating game stage:", error)
       setErrorMessage(error.message || "Failed to generate game stage. Please check your API key and try again.")
     } finally {
       setIsGenerating(false)
+      setAdditionalInstructions("")
     }
   }
 
@@ -499,6 +508,7 @@ export default function GameGenerator() {
       setIsComplete(false)
       setGameTheme("")
       setShowThemeInput(true)
+      setAdditionalInstructions("")
       localStorage.removeItem("generatedGames")
       localStorage.removeItem("gameTheme")
     }
@@ -564,11 +574,11 @@ export default function GameGenerator() {
               <h2 className="text-2xl font-bold text-white">Game Evolution Pipeline</h2>
               <p className="text-purple-200 text-sm mt-1">Theme: {gameTheme}</p>
               <Progress value={(currentStage / 5) * 100} className="mt-2" />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="text-purple-200 text-sm whitespace-nowrap">
+              Stage {currentStage}/5 {isComplete ? "(Complete)" : ""}
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="text-purple-200 text-sm whitespace-nowrap">
-                Stage {currentStage}/5 {isComplete ? "(Complete)" : ""}
-              </div>
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || isComplete}
@@ -586,18 +596,29 @@ export default function GameGenerator() {
                 ) : (
                   "Generate Next Stage"
                 )}
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="border-red-500/50 hover:bg-red-700/30 text-red-300 hover:text-red-100"
-              >
-                Reset
-              </Button>
-            </div>
+            </Button>
+            <Button
+              onClick={handleReset}
+              variant="outline"
+              className="border-red-500/50 hover:bg-red-700/30 text-red-300 hover:text-red-100"
+            >
+              Reset
+            </Button>
           </div>
+        </div>
 
-          <div className="space-y-4">
+        {!isComplete && (
+          <div className="mb-4">
+            <Textarea
+              placeholder="Additional instructions for this stage (optional)"
+              value={additionalInstructions}
+              onChange={(e) => setAdditionalInstructions(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+        )}
+
+        <div className="space-y-4">
             {stages.map((stage, index) => (
               <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
             ))}
