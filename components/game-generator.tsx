@@ -750,7 +750,7 @@ export default function GameGenerator() {
             </div>
           </div>
 
-          {/* Download Game Button */}
+          {/* Open Game in New Tab Button */}
           {stages.length > 0 && (
             <div className="mt-4 flex justify-end">
               <Button

@@ -176,12 +176,14 @@ export default function GamePage() {
     document.head.appendChild(styleElement)
 
     // Set up console log capture
+    const originalConsoleLog = console.log
     const debugPanel = document.getElementById("debug-panel")
     if (debugPanel) {
-      const originalConsoleLog = console.log
       console.log = (...args) => {
         originalConsoleLog.apply(console, args)
-        const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" ")
+        const message = args
+          .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
+          .join(" ")
 
         setLogs((prev) => [...prev, message])
 
@@ -321,9 +323,7 @@ export default function GamePage() {
         document.head.removeChild(styleElement)
       }
       // Reset console.log
-      if (typeof window !== "undefined") {
-        console.log = console.log.__proto__.log || console.log
-      }
+      console.log = originalConsoleLog
     }
   }, [gameData, showDebug, threeJsLoaded, activeTab])
 
