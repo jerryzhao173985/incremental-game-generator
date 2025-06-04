@@ -1,6 +1,7 @@
 "use server"
 
 import type { GameStageData } from "@/components/game-generator"
+import { chatCompletion } from "@/lib/openai"
 
 // Interface for stage specifications
 interface StageSpec {
@@ -126,37 +127,17 @@ Ensure the specifications are detailed, clear, and focused on creating a game th
 Be specific about what should be implemented, not just general ideas.
 Focus on making the game fun and engaging for players.`
 
-    // Call OpenAI API to generate specifications using GPT-4o
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o", // Using GPT-4o for specifications
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert game designer specializing in HTML5 games. You create detailed, practical specifications for web-based games that are fun and engaging.",
-          },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMessage = errorData.error?.message || `API error (${response.status})`
-      console.error("OpenAI API error details:", errorData)
-      throw new Error(errorMessage)
-    }
-
-    const data = await response.json()
-    const content = data.choices[0]?.message?.content
+    const content = await chatCompletion(
+      apiKey,
+      [
+        {
+          role: "system",
+          content:
+            "You are an expert game designer specializing in HTML5 games. You create detailed, practical specifications for web-based games that are fun and engaging.",
+        },
+        { role: "user", content: prompt },
+      ],
+    )
 
     if (!content) {
       throw new Error("Failed to generate stage specifications")
@@ -295,37 +276,17 @@ FINAL CHECKLIST:
 Ensure the HTML, CSS, and JavaScript work together properly and the game is functional in all contexts.`
 
     try {
-      // Call OpenAI API to generate game code using GPT-4o
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o", // Using GPT-4o for implementation
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an expert game developer specializing in HTML5 games. You write clean, error-free code that works in modern browsers and iframe environments.",
-            },
-            { role: "user", content: codePrompt },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.error?.message || `API error (${response.status})`
-        console.error("OpenAI API error details:", errorData)
-        throw new Error(errorMessage)
-      }
-
-      const data = await response.json()
-      const content = data.choices[0]?.message?.content
+      const content = await chatCompletion(
+        apiKey,
+        [
+          {
+            role: "system",
+            content:
+              "You are an expert game developer specializing in HTML5 games. You write clean, error-free code that works in modern browsers and iframe environments.",
+          },
+          { role: "user", content: codePrompt },
+        ],
+      )
 
       if (!content) {
         throw new Error("Failed to generate game stage")
@@ -433,37 +394,17 @@ Focus on making the game visible and interactive in all environments.
 Add detailed console.log statements to help with debugging.
 Ensure the game initializes properly with DOMContentLoaded.`
 
-    // Call OpenAI API to fix the game code
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o", // Using GPT-4o for fixing
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert game developer specializing in fixing HTML5 games to work in all browser environments.",
-          },
-          { role: "user", content: fixPrompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMessage = errorData.error?.message || `API error (${response.status})`
-      console.error("OpenAI API error details:", errorData)
-      throw new Error(errorMessage)
-    }
-
-    const data = await response.json()
-    const content = data.choices[0]?.message?.content
+    const content = await chatCompletion(
+      apiKey,
+      [
+        {
+          role: "system",
+          content:
+            "You are an expert game developer specializing in fixing HTML5 games to work in all browser environments.",
+        },
+        { role: "user", content: fixPrompt },
+      ],
+    )
 
     if (!content) {
       throw new Error("Failed to fix game code")
