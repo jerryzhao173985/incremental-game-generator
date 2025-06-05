@@ -33,6 +33,11 @@
     --ring: 270 50% 60%;
 
     --radius: 0.5rem;
+
+    /* animation defaults */
+    --duration-short: 300ms;
+    --duration-long: 600ms;
+    --easing-standard: ease-in-out;
   }
 
   .dark {
@@ -72,5 +77,14 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
