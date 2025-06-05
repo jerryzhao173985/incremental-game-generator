@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
 import { Progress } from "./ui/progress"
+import { stageDescriptions } from "@/lib/stage-info"
 import { saveGames } from "@/lib/game-utils"
 
 export type GameStageData = {
@@ -564,6 +565,13 @@ export default function GameGenerator() {
               <h2 className="text-2xl font-bold text-white">Game Evolution Pipeline</h2>
               <p className="text-purple-200 text-sm mt-1">Theme: {gameTheme}</p>
               <Progress value={(currentStage / 5) * 100} className="mt-2" />
+              <p className="text-purple-200 text-xs mt-2">
+                {isGenerating
+                  ? `Generating Stage ${currentStage + 1} of 5: ${stageDescriptions[currentStage]}`
+                  : currentStage < 5
+                    ? `Next Stage (${currentStage + 1}/5): ${stageDescriptions[currentStage]}`
+                    : "All stages complete"}
+              </p>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="text-purple-200 text-sm whitespace-nowrap">
