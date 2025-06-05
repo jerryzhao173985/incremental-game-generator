@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,9 +29,9 @@ export default function ApiKeyForm({ onApiKeyValidated }: ApiKeyFormProps) {
       // Auto-validate the stored key
       handleValidateApiKey(storedApiKey)
     }
-  }, [])
+  }, [handleValidateApiKey])
 
-  const handleValidateApiKey = async (keyToValidate: string) => {
+  const handleValidateApiKey = useCallback(async (keyToValidate: string) => {
     if (!keyToValidate || typeof keyToValidate !== "string" || !keyToValidate.startsWith("sk-")) {
       setValidationError("Invalid API key format. API keys should start with 'sk-'")
       return
@@ -59,7 +59,7 @@ export default function ApiKeyForm({ onApiKeyValidated }: ApiKeyFormProps) {
     } finally {
       setIsValidating(false)
     }
-  }
+  }, [onApiKeyValidated])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
