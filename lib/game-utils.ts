@@ -1,5 +1,6 @@
 import type { GameStageData } from "@/components/game-generator"
 import { getStorageItem, setStorageItem } from "./storage"
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string"
 
 // Get all games from localStorage
 export function getAllGames(): GameStageData[] {
@@ -100,7 +101,7 @@ export function compressGameData(game: GameStageData): string {
     }
 
     const gameDataStr = JSON.stringify(minimalGame)
-    return btoa(encodeURIComponent(gameDataStr))
+    return compressToEncodedURIComponent(gameDataStr)
   } catch (error) {
     console.error("Error compressing game data:", error)
     throw new Error("Failed to compress game data")
@@ -110,8 +111,8 @@ export function compressGameData(game: GameStageData): string {
 // Decompress game data from URL
 export function decompressGameData(compressedData: string): GameStageData {
   try {
-    const decodedData = decodeURIComponent(atob(compressedData))
-    return JSON.parse(decodedData) as GameStageData
+    const decodedData = decompressFromEncodedURIComponent(compressedData)
+    return JSON.parse(decodedData || "{}") as GameStageData
   } catch (error) {
     console.error("Error decompressing game data:", error)
     throw new Error("Failed to decompress game data")

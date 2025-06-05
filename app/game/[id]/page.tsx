@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText } from "lucide-react"
+import { decompressFromEncodedURIComponent } from "lz-string"
 import Script from "next/script"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -47,9 +48,9 @@ export default function GamePage() {
     const gameDataParam = searchParams.get("data")
     if (gameDataParam) {
       try {
-        // Decode the base64 game data
-        const decodedData = decodeURIComponent(atob(gameDataParam))
-        const parsedData = JSON.parse(decodedData)
+        // Decode compressed game data
+        const decodedData = decompressFromEncodedURIComponent(gameDataParam)
+        const parsedData = JSON.parse(decodedData || "{}")
 
         console.log("Game data found in URL parameters")
         setGameData(parsedData)
