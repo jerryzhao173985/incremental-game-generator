@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
@@ -594,13 +595,36 @@ export default function GameGenerator() {
               >
                 Reset
               </Button>
+              <AnimatePresence>
+                {isGenerating && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-2 text-purple-200 text-sm"
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating stage {currentStage + 1}...
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
           <div className="space-y-4">
-            {stages.map((stage, index) => (
-              <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
-            ))}
+            <AnimatePresence>
+              {stages.map((stage, index) => (
+                <motion.div
+                  key={stage.id || index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <GameStage stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {stages.length === 0 && (
               <div className="text-center py-12 text-purple-200">
