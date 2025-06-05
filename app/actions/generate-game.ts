@@ -18,6 +18,7 @@ async function generateStageSpec(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  totalStages: number,
 ): Promise<StageSpec> {
   try {
     const stageDescriptions = [
@@ -30,7 +31,7 @@ async function generateStageSpec(
 
     let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5: ${stageDescriptions[stageNumber]}.
+This is stage ${stageNumber + 1} of ${totalStages}: ${stageDescriptions[stageNumber] ?? "Additional development stage"}.
 
 Please create detailed specifications for this stage of the game development. These specifications will be used to guide the actual code implementation.
 `
@@ -176,6 +177,7 @@ export async function generateGameStage(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  totalStages: number,
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
     return {
@@ -192,7 +194,7 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey, totalStages)
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -200,7 +202,7 @@ export async function generateGameStage(
 
     let codePrompt = `You are an expert HTML5 game developer creating a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5.
+This is stage ${stageNumber + 1} of ${totalStages}.
 
 I'll provide you with detailed specifications for this stage, and you need to implement them in code.
 
