@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
 import GameStage from "./game-stage"
 import ApiKeyForm from "./api-key-form"
+import ModelSelector from "./model-selector"
 import PipelineDocumentation from "./pipeline-documentation"
 import { AlertCircle, Download, ExternalLink, Loader2, RefreshCw, Wrench } from "lucide-react"
 import { Input } from "./ui/input"
@@ -34,6 +35,7 @@ export default function GameGenerator() {
   const [isComplete, setIsComplete] = useState(false)
   const [gameTheme, setGameTheme] = useState("")
   const [apiKey, setApiKey] = useState<string | null>(null)
+  const [model, setModel] = useState("gpt-4o")
   const [themeInput, setThemeInput] = useState("")
   const [showThemeInput, setShowThemeInput] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -54,6 +56,10 @@ export default function GameGenerator() {
       const storedApiKey = localStorage.getItem("openai_api_key")
       if (storedApiKey) {
         setApiKey(storedApiKey)
+      }
+      const storedModel = localStorage.getItem("openai_model")
+      if (storedModel) {
+        setModel(storedModel)
       }
 
       const storedGames = localStorage.getItem("generatedGames")
@@ -100,6 +106,11 @@ export default function GameGenerator() {
     }
   }, [stages, gameTheme])
 
+  // Persist selected model
+  useEffect(() => {
+    localStorage.setItem("openai_model", model)
+  }, [model])
+
   const handleApiKeyValidated = (key: string) => {
     setApiKey(key)
     // Show theme input once API key is validated
@@ -127,7 +138,7 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey, model)
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -169,7 +180,7 @@ export default function GameGenerator() {
 
     try {
       const latestStage = stages[stages.length - 1]
-      const fixedGame = await fixGameCode(latestStage, errorDetails, apiKey)
+      const fixedGame = await fixGameCode(latestStage, errorDetails, apiKey, model)
 
       // Update the latest stage with the fixed code
       const updatedStages = [...stages]
@@ -527,6 +538,7 @@ export default function GameGenerator() {
                 onChange={(e) => setThemeInput(e.target.value)}
                 className="flex-grow bg-white/5 border-white/10 text-white"
               />
+              <ModelSelector value={model} onChange={setModel} />
               <Button
                 onClick={handleStartGeneration}
                 disabled={!themeInput.trim()}
