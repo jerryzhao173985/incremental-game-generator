@@ -35,6 +35,8 @@ export default function GameGenerator() {
   const [gameTheme, setGameTheme] = useState("")
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [themeInput, setThemeInput] = useState("")
+  const [totalStages, setTotalStages] = useState(5)
+  const [totalStagesInput, setTotalStagesInput] = useState("5")
   const [showThemeInput, setShowThemeInput] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [iframeError, setIframeError] = useState<string | null>(null)
@@ -65,8 +67,11 @@ export default function GameGenerator() {
             setStages(games)
             setCurrentStage(games.length)
             setGameTheme(localStorage.getItem("gameTheme") || "")
+            const storedTotal = parseInt(localStorage.getItem("totalStages") || "5", 10)
+            setTotalStages(storedTotal)
+            setTotalStagesInput(String(storedTotal))
             setShowThemeInput(false)
-            if (games.length === 5) {
+            if (games.length === storedTotal) {
               setIsComplete(true)
             }
           }
@@ -91,6 +96,7 @@ export default function GameGenerator() {
         const saved = saveGames(stages)
         if (saved) {
           localStorage.setItem("gameTheme", gameTheme)
+          localStorage.setItem("totalStages", String(totalStages))
         } else {
           console.error("Failed to save games to localStorage")
         }
@@ -112,6 +118,14 @@ export default function GameGenerator() {
       return
     }
 
+    const parsedTotal = parseInt(totalStagesInput, 10)
+    if (!parsedTotal || parsedTotal < 1) {
+      alert("Please enter a valid number of stages")
+      return
+    }
+
+    setTotalStages(parsedTotal)
+
     setGameTheme(themeInput)
     setShowThemeInput(false)
     handleGenerate()
@@ -127,7 +141,7 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey, totalStages)
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -141,7 +155,7 @@ export default function GameGenerator() {
         setStages([...stages, newStage])
         setCurrentStage(currentStage + 1)
 
-        if (currentStage === 4) {
+        if (currentStage + 1 === totalStages) {
           setIsComplete(true)
         }
 
@@ -498,9 +512,12 @@ export default function GameGenerator() {
       setCurrentStage(0)
       setIsComplete(false)
       setGameTheme("")
+      setTotalStages(5)
+      setTotalStagesInput("5")
       setShowThemeInput(true)
       localStorage.removeItem("generatedGames")
       localStorage.removeItem("gameTheme")
+      localStorage.removeItem("totalStages")
     }
   }
 
@@ -527,6 +544,14 @@ export default function GameGenerator() {
                 onChange={(e) => setThemeInput(e.target.value)}
                 className="flex-grow bg-white/5 border-white/10 text-white"
               />
+              <Input
+                type="number"
+                min="1"
+                placeholder="Stages"
+                value={totalStagesInput}
+                onChange={(e) => setTotalStagesInput(e.target.value)}
+                className="w-24 bg-white/5 border-white/10 text-white"
+              />
               <Button
                 onClick={handleStartGeneration}
                 disabled={!themeInput.trim()}
@@ -536,7 +561,7 @@ export default function GameGenerator() {
               </Button>
             </div>
             <p className="text-xs text-purple-300/70">
-              This will be used as the foundation for your game. The AI will build upon this theme through all five
+              This will be used as the foundation for your game. The AI will build upon this theme through all {totalStages}
               stages.
             </p>
           </div>
@@ -563,11 +588,11 @@ export default function GameGenerator() {
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-white">Game Evolution Pipeline</h2>
               <p className="text-purple-200 text-sm mt-1">Theme: {gameTheme}</p>
-              <Progress value={(currentStage / 5) * 100} className="mt-2" />
+              <Progress value={(currentStage / totalStages) * 100} className="mt-2" />
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="text-purple-200 text-sm whitespace-nowrap">
-                Stage {currentStage}/5 {isComplete ? "(Complete)" : ""}
+                Stage {currentStage}/{totalStages} {isComplete ? "(Complete)" : ""}
               </div>
               <Button
                 onClick={handleGenerate}
@@ -581,7 +606,7 @@ export default function GameGenerator() {
                   </>
                 ) : currentStage === 0 ? (
                   "Generate First Stage"
-                ) : currentStage === 5 ? (
+                ) : currentStage === totalStages ? (
                   "Generation Complete!"
                 ) : (
                   "Generate Next Stage"
