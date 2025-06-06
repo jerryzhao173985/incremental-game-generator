@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
@@ -81,7 +81,7 @@ export default function GameGenerator() {
     } catch (error) {
       console.error("Error loading saved games:", error)
     }
-  }, [])
+  }, [stages.length])
 
   // Save games to localStorage whenever stages change
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function GameGenerator() {
   }
 
   // Generate iframe content with proper error handling
-  const generateFinalGameIframeContent = () => {
+  const generateFinalGameIframeContent = useCallback(() => {
     if (stages.length === 0) return ""
 
     const latestStage = stages[stages.length - 1]
@@ -457,7 +457,7 @@ export default function GameGenerator() {
       </body>
       </html>
     `
-  }
+  }, [stages])
 
   // Set up message listener for iframe communication
   useEffect(() => {
@@ -489,7 +489,7 @@ export default function GameGenerator() {
       setLogs([])
       finalGameIframeRef.current.srcdoc = generateFinalGameIframeContent()
     }
-  }, [stages, refreshKey])
+  }, [stages, refreshKey, generateFinalGameIframeContent])
 
   // Function to reset the game generator
   const handleReset = () => {
