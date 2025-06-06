@@ -112,7 +112,10 @@ export function compressGameData(game: GameStageData): string {
 export function decompressGameData(compressedData: string): GameStageData {
   try {
     const decodedData = decompressFromEncodedURIComponent(compressedData)
-    return JSON.parse(decodedData || "{}") as GameStageData
+    if (decodedData === null) {
+      throw new Error("Decompression failed: decoded data is null")
+    }
+    return JSON.parse(decodedData) as GameStageData
   } catch (error) {
     console.error("Error decompressing game data:", error)
     throw new Error("Failed to decompress game data")
