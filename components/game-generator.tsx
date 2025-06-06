@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
 import { Progress } from "./ui/progress"
 import { saveGames } from "@/lib/game-utils"
+import { compressToEncodedURIComponent } from "lz-string"
 
 export type GameStageData = {
   title: string
@@ -236,12 +237,11 @@ export default function GameGenerator() {
         md: latestStage.md,
       }
 
-      // Convert game data to base64 to make it URL-safe
       const gameDataStr = JSON.stringify(gameData)
-      const gameDataB64 = btoa(encodeURIComponent(gameDataStr))
+      const compressed = compressToEncodedURIComponent(gameDataStr)
 
-      // Open the game in a new tab with the game data in the URL
-      window.open(`/game/${latestStage.id}?data=${gameDataB64}`, "_blank")
+      // Open the game in a new tab with the compressed game data in the URL
+      window.open(`/game/${latestStage.id}?data=${compressed}`, "_blank")
 
       console.log("Game opened in new tab with direct data")
     } catch (error) {
