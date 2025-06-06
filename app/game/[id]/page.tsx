@@ -50,7 +50,10 @@ export default function GamePage() {
       try {
         // Decode compressed game data
         const decodedData = decompressFromEncodedURIComponent(gameDataParam)
-        const parsedData = JSON.parse(decodedData || "{}")
+        if (decodedData === null) {
+          throw new Error("Failed to decompress game data from URL parameters.")
+        }
+        const parsedData = JSON.parse(decodedData)
 
         console.log("Game data found in URL parameters")
         setGameData(parsedData)
