@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
 import { Progress } from "./ui/progress"
 import { saveGames } from "@/lib/game-utils"
+import { generateGameZip } from "@/lib/zip-utils"
 
 export type GameStageData = {
   title: string
@@ -249,6 +250,29 @@ export default function GameGenerator() {
       setErrorMessage("Failed to open game in new tab: " + (error instanceof Error ? error.message : String(error)))
     } finally {
       setIsOpeningNewTab(false)
+    }
+  }
+
+  // Download the latest game as a ZIP archive
+  const downloadGameZip = async () => {
+    if (stages.length === 0) return
+
+    try {
+      const latestStage = stages[stages.length - 1]
+      const blob = await generateGameZip(latestStage)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${latestStage.title.replace(/\s+/g, "_")}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Error generating game zip:", error)
+      setErrorMessage(
+        "Failed to generate game ZIP: " + (error instanceof Error ? error.message : String(error)),
+      )
     }
   }
 
@@ -750,9 +774,9 @@ export default function GameGenerator() {
             </div>
           </div>
 
-          {/* Download Game Button */}
+          {/* Play and Download Buttons */}
           {stages.length > 0 && (
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end gap-3">
               <Button
                 onClick={openFullscreenPreview}
                 className="bg-purple-600 hover:bg-purple-700"
@@ -765,10 +789,14 @@ export default function GameGenerator() {
                   </>
                 ) : (
                   <>
-                    <Download className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4 mr-2" />
                     Play Full Game
                   </>
                 )}
+              </Button>
+              <Button onClick={downloadGameZip} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download ZIP
               </Button>
             </div>
           )}
