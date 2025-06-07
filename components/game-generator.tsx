@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
 import { Progress } from "./ui/progress"
-import { saveGames } from "@/lib/game-utils"
+import { saveGames, saveGame, compressGameData, getGameStyles } from "@/lib/game-utils"
 
 export type GameStageData = {
   title: string
@@ -205,42 +205,19 @@ export default function GameGenerator() {
     setIsOpeningNewTab(true)
 
     try {
-      const latestStage = stages[stages.length - 1]
+      const latestStage = { ...stages[stages.length - 1] }
 
-      // Ensure the game has an ID
       if (!latestStage.id) {
         latestStage.id = `game-${stages.length}-${Date.now()}`
-
-        // Update the stages array with the new ID
         const updatedStages = [...stages]
         updatedStages[updatedStages.length - 1] = latestStage
         setStages(updatedStages)
       }
 
-      // Save to localStorage first (as a backup)
-      try {
-        localStorage.setItem("generatedGames", JSON.stringify(stages))
-        console.log("Game data saved to localStorage")
-      } catch (err) {
-        console.warn("Failed to save to localStorage, continuing with URL method:", err)
-      }
+      saveGame(latestStage)
 
-      // Create a compressed version of the game data to pass in the URL
-      const gameData = {
-        id: latestStage.id,
-        title: latestStage.title,
-        description: latestStage.description,
-        html: latestStage.html,
-        css: latestStage.css,
-        js: latestStage.js,
-        md: latestStage.md,
-      }
+      const gameDataB64 = compressGameData(latestStage)
 
-      // Convert game data to base64 to make it URL-safe
-      const gameDataStr = JSON.stringify(gameData)
-      const gameDataB64 = btoa(encodeURIComponent(gameDataStr))
-
-      // Open the game in a new tab with the game data in the URL
       window.open(`/game/${latestStage.id}?data=${gameDataB64}`, "_blank")
 
       console.log("Game opened in new tab with direct data")
@@ -266,53 +243,7 @@ export default function GameGenerator() {
         <!-- Add THREE.js library -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
         <style>
-          html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
-            background-color: white;
-          }
-          #game-container {
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            position: relative;
-          }
-          #error-display {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(255,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            z-index: 9999;
-            max-width: 80%;
-            word-break: break-word;
-          }
-          #debug-panel {
-            position: fixed;
-            top: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px;
-            font-family: monospace;
-            font-size: 10px;
-            z-index: 9999;
-            max-width: 300px;
-            max-height: 200px;
-            overflow: auto;
-            display: none;
-          }
-          * {
-            box-sizing: border-box;
-          }
-          ${latestStage.css}
+          ${getGameStyles(latestStage.css, true)}
         </style>
       </head>
       <body>
