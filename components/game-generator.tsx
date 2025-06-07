@@ -219,7 +219,7 @@ export default function GameGenerator() {
 
       // Save to localStorage first (as a backup)
       try {
-        localStorage.setItem("generatedGames", JSON.stringify(stages))
+        localStorage.setItem("generatedGames", JSON.stringify(updatedStages))
         console.log("Game data saved to localStorage")
       } catch (err) {
         console.warn("Failed to save to localStorage, continuing with URL method:", err)
