@@ -117,3 +117,33 @@ export function decompressGameData(compressedData: string): GameStageData {
     throw new Error("Failed to decompress game data")
   }
 }
+
+// Generate a ZIP blob containing the game files
+export async function generateGameZip(game: GameStageData): Promise<Blob> {
+  const JSZip = (await import("jszip")).default
+  const zip = new JSZip()
+
+  const htmlContent = `<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${game.title}</title>
+      <style>${game.css}</style>
+    </head>
+    <body>
+      <div id="game-container">
+        ${game.html}
+      </div>
+      <script>${game.js}</script>
+    </body>
+  </html>`
+
+  zip.file("index.html", htmlContent)
+
+  if (game.md) {
+    zip.file("README.md", game.md)
+  }
+
+  return zip.generateAsync({ type: "blob" })
+}

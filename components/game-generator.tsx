@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ReactMarkdown from "react-markdown"
 import { Progress } from "./ui/progress"
-import { saveGames } from "@/lib/game-utils"
+import { saveGames, generateGameZip } from "@/lib/game-utils"
+import { saveAs } from "file-saver"
 
 export type GameStageData = {
   title: string
@@ -46,6 +47,7 @@ export default function GameGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false)
 
   // Load saved games from localStorage on component mount
   useEffect(() => {
@@ -249,6 +251,23 @@ export default function GameGenerator() {
       setErrorMessage("Failed to open game in new tab: " + (error instanceof Error ? error.message : String(error)))
     } finally {
       setIsOpeningNewTab(false)
+    }
+  }
+
+  // Download the latest stage as a ZIP file
+  const downloadZip = async () => {
+    if (stages.length === 0) return
+    setIsDownloadingZip(true)
+    try {
+      const latestStage = stages[stages.length - 1]
+      const blob = await generateGameZip(latestStage)
+      const fileName = `${latestStage.title.replace(/\s+/g, "_") || "game"}.zip`
+      saveAs(blob, fileName)
+    } catch (err) {
+      console.error("Failed to generate ZIP:", err)
+      setErrorMessage("Failed to download ZIP: " + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setIsDownloadingZip(false)
     }
   }
 
@@ -750,9 +769,27 @@ export default function GameGenerator() {
             </div>
           </div>
 
-          {/* Download Game Button */}
+          {/* Download / Fullscreen Buttons */}
           {stages.length > 0 && (
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                onClick={downloadZip}
+                variant="outline"
+                className="border-purple-500/50 hover:bg-purple-700/30"
+                disabled={isDownloadingZip}
+              >
+                {isDownloadingZip ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Preparing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download ZIP
+                  </>
+                )}
+              </Button>
               <Button
                 onClick={openFullscreenPreview}
                 className="bg-purple-600 hover:bg-purple-700"
@@ -765,7 +802,7 @@ export default function GameGenerator() {
                   </>
                 ) : (
                   <>
-                    <Download className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4 mr-2" />
                     Play Full Game
                   </>
                 )}
