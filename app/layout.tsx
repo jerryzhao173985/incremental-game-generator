@@ -5,6 +5,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/react"
 import ErrorBoundary from "@/components/error-boundary"
+import NetworkIndicator from "@/components/network-indicator"
 import { Suspense } from "react"
 
 // Initialize the Inter font
@@ -31,6 +32,7 @@ export default function RootLayout({
         <Suspense fallback={<div>Loading...</div>}>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ErrorBoundary>{children}</ErrorBoundary>
+            <NetworkIndicator className="fixed bottom-2 right-2 z-50" />
           </ThemeProvider>
           <Analytics />
         </Suspense>
