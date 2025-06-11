@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { generateGameStage, fixGameCode } from "@/app/actions/generate-game"
@@ -46,9 +46,12 @@ export default function GameGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const initializedRef = useRef(false)
 
   // Load saved games from localStorage on component mount
   useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
     try {
       // Check for API key first
       const storedApiKey = localStorage.getItem("openai_api_key")
@@ -60,15 +63,12 @@ export default function GameGenerator() {
       if (storedGames) {
         const games = JSON.parse(storedGames)
         if (Array.isArray(games) && games.length > 0) {
-          // Only load the games if we don't already have stages
-          if (stages.length === 0) {
-            setStages(games)
-            setCurrentStage(games.length)
-            setGameTheme(localStorage.getItem("gameTheme") || "")
-            setShowThemeInput(false)
-            if (games.length === 5) {
-              setIsComplete(true)
-            }
+          setStages(games)
+          setCurrentStage(games.length)
+          setGameTheme(localStorage.getItem("gameTheme") || "")
+          setShowThemeInput(false)
+          if (games.length === 5) {
+            setIsComplete(true)
           }
         } else if (storedApiKey) {
           // If we have an API key but no games, show the theme input
@@ -253,7 +253,7 @@ export default function GameGenerator() {
   }
 
   // Generate iframe content with proper error handling
-  const generateFinalGameIframeContent = () => {
+  const generateFinalGameIframeContent = useCallback(() => {
     if (stages.length === 0) return ""
 
     const latestStage = stages[stages.length - 1]
@@ -457,7 +457,7 @@ export default function GameGenerator() {
       </body>
       </html>
     `
-  }
+  }, [stages])
 
   // Set up message listener for iframe communication
   useEffect(() => {
@@ -489,7 +489,7 @@ export default function GameGenerator() {
       setLogs([])
       finalGameIframeRef.current.srcdoc = generateFinalGameIframeContent()
     }
-  }, [stages, refreshKey])
+  }, [stages, refreshKey, generateFinalGameIframeContent])
 
   // Function to reset the game generator
   const handleReset = () => {
