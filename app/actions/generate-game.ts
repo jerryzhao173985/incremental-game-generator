@@ -18,6 +18,7 @@ async function generateStageSpec(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  additionalInstructions: string = "",
 ): Promise<StageSpec> {
   try {
     const stageDescriptions = [
@@ -112,6 +113,10 @@ Please create detailed specifications for this stage of the game development. Th
         break
     }
 
+    if (additionalInstructions) {
+      prompt += `\nAdditional User Instructions:\n${additionalInstructions}`
+    }
+
     prompt += `\nReturn your response in the following JSON format:
 {
   "title": "Game Title - Stage ${stageNumber + 1}",
@@ -176,6 +181,7 @@ export async function generateGameStage(
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
+  additionalInstructions: string = "",
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
     return {
@@ -192,7 +198,13 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(
+      stageNumber,
+      theme,
+      previousStages,
+      apiKey,
+      additionalInstructions,
+    )
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -219,8 +231,10 @@ ${stageSpec.technicalRequirements.map((req) => `- ${req}`).join("\n")}
 User Experience Considerations:
 ${stageSpec.userExperience.map((ux) => `- ${ux}`).join("\n")}
 
-Improvements Over Previous Stage:
+    Improvements Over Previous Stage:
 ${stageSpec.improvements.map((imp) => `- ${imp}`).join("\n")}
+
+${additionalInstructions ? `Additional User Instructions:\n${additionalInstructions}\n` : ""}
 
 IMPORTANT BROWSER COMPATIBILITY REQUIREMENTS:
 1. The game MUST work properly when embedded in an iframe AND when opened in a new browser window
