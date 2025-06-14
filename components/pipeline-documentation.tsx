@@ -31,6 +31,11 @@ export default function PipelineDocumentation() {
               This application builds a game through five progressive stages, with each stage building upon the previous
               one. The process uses a two-step approach for each stage:
             </p>
+            <p className="text-purple-200">
+              You can customize the number of stages, provide per-stage instructions, select a starting template, and
+              choose which AI model to use. After each stage you can add feedback that will be incorporated into the next
+              generation.
+            </p>
 
             <ol className="list-decimal pl-5 space-y-1">
               <li>
@@ -140,6 +145,7 @@ export default function PipelineDocumentation() {
                 <li>Check the "Logs" tab to see console output and debug information</li>
                 <li>Read the "Documentation" tab to understand how your game works</li>
                 <li>Use the "Show Debug Panel" button to see real-time console logs while playing</li>
+                <li>Use the Export/Import buttons to share your game stages with others</li>
               </ul>
             </div>
 

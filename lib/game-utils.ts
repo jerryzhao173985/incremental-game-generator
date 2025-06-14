@@ -117,3 +117,14 @@ export function decompressGameData(compressedData: string): GameStageData {
     throw new Error("Failed to decompress game data")
   }
 }
+
+// Compress an array of stages
+export function compressStages(stages: GameStageData[]): string {
+  return btoa(encodeURIComponent(JSON.stringify(stages)))
+}
+
+// Decompress an array of stages
+export function decompressStages(data: string): GameStageData[] {
+  const decoded = decodeURIComponent(atob(data))
+  return JSON.parse(decoded) as GameStageData[]
+}
