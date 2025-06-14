@@ -15,6 +15,7 @@ interface StageSpec {
 // Generate specifications for a stage using GPT-4o
 async function generateStageSpec(
   stageNumber: number,
+  stageCount: number,
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
@@ -28,9 +29,12 @@ async function generateStageSpec(
       "Final polish with optimizations and special effects",
     ]
 
-    let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game. 
+    const description =
+      stageDescriptions[stageNumber] || "Additional enhancements and refinement"
+
+    let prompt = `You are an expert HTML5 game designer creating specifications for a web-based game.
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5: ${stageDescriptions[stageNumber]}.
+This is stage ${stageNumber + 1} of ${stageCount}: ${description}.
 
 Please create detailed specifications for this stage of the game development. These specifications will be used to guide the actual code implementation.
 `
@@ -173,6 +177,7 @@ Focus on making the game fun and engaging for players.`
 // Main function to generate a game stage
 export async function generateGameStage(
   stageNumber: number,
+  stageCount: number,
   theme: string,
   previousStages: GameStageData[],
   apiKey: string,
@@ -192,7 +197,7 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(stageNumber, stageCount, theme, previousStages, apiKey)
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -200,7 +205,7 @@ export async function generateGameStage(
 
     let codePrompt = `You are an expert HTML5 game developer creating a web-based game. 
 The game theme is: ${theme}.
-This is stage ${stageNumber + 1} of 5.
+This is stage ${stageNumber + 1} of ${stageCount}.
 
 I'll provide you with detailed specifications for this stage, and you need to implement them in code.
 
