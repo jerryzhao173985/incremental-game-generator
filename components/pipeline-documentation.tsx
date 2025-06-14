@@ -28,8 +28,8 @@ export default function PipelineDocumentation() {
             <h3 className="text-xl font-semibold text-purple-200">Incremental Game Development Process</h3>
 
             <p>
-              This application builds a game through five progressive stages, with each stage building upon the previous
-              one. The process uses a two-step approach for each stage:
+              This application builds a game through a configurable number of stages (five by default), with each stage
+              building upon the previous one. The process uses a two-step approach for each stage:
             </p>
 
             <ol className="list-decimal pl-5 space-y-1">
@@ -96,7 +96,7 @@ export default function PipelineDocumentation() {
               </li>
               <li>Review the generated code, documentation, and preview the game.</li>
               <li>Generate the next stage, which builds upon the previous stage.</li>
-              <li>Continue through all five stages to complete your game.</li>
+              <li>Continue through all stages to complete your game.</li>
               <li>
                 Open the game in a new tab for the best playing experience, or use the "Fix Game" button if you
                 encounter rendering issues.
