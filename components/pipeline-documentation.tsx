@@ -24,7 +24,7 @@ export default function PipelineDocumentation() {
     setIsExpanded(prev => !prev)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       handleToggle()
@@ -216,10 +216,10 @@ export default function PipelineDocumentation() {
               </h4>
 
               <div className="grid gap-3">
-                {HOW_IT_WORKS_STEPS.map((step, index) => (
-                  <div key={index} className="flex items-start p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
+                {HOW_IT_WORKS_STEPS.map((step) => (
+                  <div key={step} className="flex items-start p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="bg-purple-500/30 text-purple-200 rounded-full w-7 h-7 flex items-center justify-center font-semibold mr-4 mt-0.5 text-sm flex-shrink-0">
-                      {index + 1}
+                      {HOW_IT_WORKS_STEPS.indexOf(step) + 1}
                     </div>
                     <p className="text-purple-200 leading-relaxed">{step}</p>
                   </div>
