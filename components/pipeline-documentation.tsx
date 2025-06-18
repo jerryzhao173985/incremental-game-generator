@@ -5,14 +5,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp, FileText, Play, Cog, Rocket, Star, Zap } from "lucide-react"
 import { Button } from "./ui/button"
 
+// Move steps array outside component to avoid repeated allocations
+const HOW_IT_WORKS_STEPS = [
+  "Enter your OpenAI API key to authenticate with the service",
+  "Provide a theme for your game (e.g., space adventure, medieval fantasy)",
+  "AI generates detailed specifications for the current stage based on your theme",
+  "Specifications are implemented into working game code (HTML, CSS, JavaScript)",
+  "Review the generated code, documentation, and preview your game",
+  "Generate the next stage, which builds upon the previous stage",
+  "Continue through all five stages to complete your game journey",
+  "Open the game in a new tab for the best playing experience"
+]
+
 export default function PipelineDocumentation() {
   const [isExpanded, setIsExpanded] = useState(true) // Default to expanded
 
+  const handleToggle = () => {
+    setIsExpanded(prev => !prev)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      handleToggle()
+    }
+  }
+
   return (
     <Card className="bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border-purple-400/40 mb-8 shadow-xl">
-      <CardHeader 
-        className="pb-4 cursor-pointer transition-colors hover:bg-white/5 rounded-t-lg" 
-        onClick={() => setIsExpanded(!isExpanded)}
+      <CardHeader
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        onKeyDown={handleKeyDown}
+        className="pb-4 cursor-pointer transition-colors hover:bg-white/5 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-purple-400/50" 
+        onClick={handleToggle}
       >
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center">
@@ -28,6 +55,7 @@ export default function PipelineDocumentation() {
             variant="ghost" 
             size="sm" 
             className="text-purple-200 hover:text-white hover:bg-purple-600/30 transition-all duration-200"
+            tabIndex={-1}
           >
             {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </Button>
@@ -188,16 +216,7 @@ export default function PipelineDocumentation() {
               </h4>
 
               <div className="grid gap-3">
-                {[
-                  "Enter your OpenAI API key to authenticate with the service",
-                  "Provide a theme for your game (e.g., space adventure, medieval fantasy)",
-                  "AI generates detailed specifications for the current stage based on your theme",
-                  "Specifications are implemented into working game code (HTML, CSS, JavaScript)",
-                  "Review the generated code, documentation, and preview your game",
-                  "Generate the next stage, which builds upon the previous stage",
-                  "Continue through all five stages to complete your game journey",
-                  "Open the game in a new tab for the best playing experience"
-                ].map((step, index) => (
+                {HOW_IT_WORKS_STEPS.map((step, index) => (
                   <div key={index} className="flex items-start p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="bg-purple-500/30 text-purple-200 rounded-full w-7 h-7 flex items-center justify-center font-semibold mr-4 mt-0.5 text-sm flex-shrink-0">
                       {index + 1}
