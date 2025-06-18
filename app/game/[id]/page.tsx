@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText } from "lucide-react"
+import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText, GamepadIcon, ArrowLeft } from "lucide-react"
 import Script from "next/script"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -11,9 +11,14 @@ import ReactMarkdown from "react-markdown"
 // Simple syntax highlighting component
 function CodeBlock({ code, language }: { code: string; language: string }) {
   return (
-    <pre className={`language-${language} overflow-auto p-4 bg-gray-900 text-gray-100 rounded-md`}>
-      <code>{code}</code>
-    </pre>
+    <div className="relative group">
+      <div className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
+        {language.toUpperCase()}
+      </div>
+      <pre className={`language-${language} overflow-auto p-6 bg-gray-900 text-gray-100 rounded-xl border border-gray-700`}>
+        <code className="text-sm leading-relaxed">{code}</code>
+      </pre>
+    </div>
   )
 }
 
@@ -345,10 +350,11 @@ export default function GamePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading game...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-900 to-indigo-900">
+        <div className="text-center bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-purple-400/30">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-400 mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-white mb-2">Loading Your Game</h2>
+          <p className="text-purple-200">Setting up the gaming environment...</p>
         </div>
       </div>
     )
@@ -356,40 +362,44 @@ export default function GamePage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md">
-          <div className="flex items-start gap-3 mb-4">
-            <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-1" />
-            <div>
-              <h1 className="text-2xl font-bold text-red-600 mb-2">Error</h1>
-              <p className="text-gray-700 mb-6">{error}</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-900 to-purple-900 p-4">
+        <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-lg w-full border border-red-400/30">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="bg-red-500/20 p-3 rounded-xl">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-red-300 mb-3">Game Not Found</h1>
+              <p className="text-red-200/90 leading-relaxed mb-6">{error}</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
               onClick={() => window.history.back()}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center"
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Go Back
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => router.push("/")}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center"
+              variant="outline"
+              className="flex-1 border-red-400/50 text-red-200 hover:bg-red-500/20"
             >
               <Home className="h-4 w-4 mr-2" />
               Go to Home
-            </button>
+            </Button>
           </div>
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Troubleshooting Tips</h3>
-            <ul className="text-xs text-yellow-700 list-disc pl-4 space-y-1">
-              <li>Make sure you're not in incognito/private browsing mode</li>
-              <li>Try going back to the main page and clicking "Open in New Tab" again</li>
-              <li>Check if localStorage is enabled in your browser</li>
-              <li>Try refreshing the main page before opening in a new tab</li>
-              <li>Check browser console for any JavaScript errors</li>
-              <li>Try clearing your browser cache and reloading the page</li>
+          
+          <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-400/30 rounded-xl">
+            <h3 className="text-lg font-semibold text-yellow-300 mb-3">Troubleshooting Tips</h3>
+            <ul className="text-sm text-yellow-200/90 space-y-2 leading-relaxed">
+              <li>• Make sure you're not in incognito/private browsing mode</li>
+              <li>• Try going back to the main page and clicking "Open in New Tab" again</li>
+              <li>• Check if localStorage is enabled in your browser</li>
+              <li>• Try refreshing the main page before opening in a new tab</li>
+              <li>• Clear your browser cache and reload the page</li>
             </ul>
           </div>
         </div>
@@ -413,85 +423,114 @@ export default function GamePage() {
         }}
       />
 
-      <div className="min-h-screen bg-gray-100 flex flex-col">
-        {/* Header with game title and controls */}
-        <header className="bg-purple-900 text-white p-4 shadow-md">
-          <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center">
-            <div className="mb-4 sm:mb-0">
-              <h1 className="text-xl font-bold">{gameData?.title || "Game"}</h1>
-              <p className="text-sm text-purple-200">{gameData?.description || "Interactive Game"}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => window.history.back()}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30 text-white"
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Back to Generator
-              </Button>
-              <Button
-                onClick={() => window.location.reload()}
-                variant="outline"
-                className="border-purple-500/50 hover:bg-purple-700/30 text-white"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reload
-              </Button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-purple-900 flex flex-col">
+        {/* Enhanced Header */}
+        <header className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white p-6 shadow-xl border-b border-purple-500/30">
+          <div className="container mx-auto">
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+              <div className="text-center lg:text-left">
+                <div className="flex items-center justify-center lg:justify-start mb-2">
+                  <div className="bg-purple-500/20 p-2 rounded-xl mr-3">
+                    <GamepadIcon className="h-6 w-6 text-purple-300" />
+                  </div>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white">{gameData?.title || "Game"}</h1>
+                </div>
+                <p className="text-base text-purple-200/90 max-w-2xl leading-relaxed">
+                  {gameData?.description || "Interactive Game Experience"}
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => window.history.back()}
+                  variant="outline"
+                  className="border-purple-400/50 hover:bg-purple-700/30 text-white transition-all duration-200"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Generator
+                </Button>
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  className="border-purple-400/50 hover:bg-purple-700/30 text-white transition-all duration-200"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reload
+                </Button>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Main content with tabs */}
-        <main className="flex-grow container mx-auto p-4">
+        {/* Main content with enhanced tabs */}
+        <main className="flex-grow container mx-auto p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-purple-950/50 w-full justify-start mb-4">
-              <TabsTrigger value="game" className="flex items-center">
-                <Play className="h-4 w-4 mr-2" />
-                Game
-              </TabsTrigger>
-              <TabsTrigger value="code" className="flex items-center">
-                <Code className="h-4 w-4 mr-2" />
-                Code
-              </TabsTrigger>
-              <TabsTrigger value="logs" className="flex items-center">
-                <Eye className="h-4 w-4 mr-2" />
-                Logs
-              </TabsTrigger>
-              {gameData?.md && (
-                <TabsTrigger value="docs" className="flex items-center">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Documentation
+            <div className="mb-6">
+              <TabsList className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-md w-full justify-start border border-purple-500/30">
+                <TabsTrigger 
+                  value="game" 
+                  className="flex items-center data-[state=active]:bg-purple-600/50 data-[state=active]:text-white"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Game
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger 
+                  value="code" 
+                  className="flex items-center data-[state=active]:bg-purple-600/50 data-[state=active]:text-white"
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Code
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="logs" 
+                  className="flex items-center data-[state=active]:bg-purple-600/50 data-[state=active]:text-white"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Logs
+                </TabsTrigger>
+                {gameData?.md && (
+                  <TabsTrigger 
+                    value="docs" 
+                    className="flex items-center data-[state=active]:bg-purple-600/50 data-[state=active]:text-white"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Documentation
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Game Tab */}
             <TabsContent value="game" className="m-0">
-              <div className="bg-white rounded-lg overflow-hidden shadow-lg relative" style={{ height: "80vh" }}>
+              <div className="bg-white rounded-2xl overflow-hidden shadow-2xl relative border border-gray-200" style={{ height: "80vh" }}>
                 {!threeJsLoaded && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 z-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-600">Loading game resources...</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50 z-10">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600 mb-6"></div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Loading Game Resources</h3>
+                    <p className="text-gray-600">Setting up the gaming environment...</p>
                   </div>
                 )}
 
                 {threeJsLoaded && !gameLoaded && !gameError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 z-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-                    <p className="text-gray-600">Initializing game...</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 z-10">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-6"></div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Initializing Game</h3>
+                    <p className="text-gray-600">Starting your game experience...</p>
                   </div>
                 )}
 
                 {gameError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 z-10 p-4">
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 max-w-md">
-                      <h3 className="font-bold">Error Loading Game</h3>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-pink-50 z-10 p-6">
+                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-6 mb-6 max-w-md rounded-lg shadow-lg">
+                      <h3 className="font-bold text-lg mb-2">Error Loading Game</h3>
                       <p className="text-sm">{gameError}</p>
                     </div>
-                    <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
+                    <Button 
+                      onClick={() => window.location.reload()} 
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
+                      Retry Loading
                     </Button>
                   </div>
                 )}
@@ -501,16 +540,16 @@ export default function GamePage() {
                 {/* Debug panel */}
                 <div
                   id="debug-panel"
-                  className="fixed top-0 right-0 bg-black/70 text-white p-2 font-mono text-xs max-w-xs max-h-48 overflow-auto z-50"
+                  className="fixed top-0 right-0 bg-black/80 text-white p-3 font-mono text-xs max-w-xs max-h-48 overflow-auto z-50 rounded-bl-lg"
                   style={{ display: showDebug ? "block" : "none" }}
                 ></div>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-6 flex justify-end">
                 <Button
                   onClick={() => setShowDebug(!showDebug)}
                   variant="outline"
-                  className={`border-purple-500/50 hover:bg-purple-700/30 ${showDebug ? "bg-purple-700/30" : ""}`}
+                  className={`border-purple-500/50 hover:bg-purple-700/30 text-white transition-all duration-200 ${showDebug ? "bg-purple-700/30" : ""}`}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   {showDebug ? "Hide Debug Panel" : "Show Debug Panel"}
@@ -521,26 +560,26 @@ export default function GamePage() {
             {/* Code Tab */}
             <TabsContent value="code" className="m-0">
               <Tabs defaultValue="html" className="w-full">
-                <TabsList className="bg-gray-800 w-full justify-start mb-4">
-                  <TabsTrigger value="html">HTML</TabsTrigger>
-                  <TabsTrigger value="css">CSS</TabsTrigger>
-                  <TabsTrigger value="js">JavaScript</TabsTrigger>
+                <TabsList className="bg-gray-800/90 backdrop-blur-md w-full justify-start mb-6 border border-gray-700">
+                  <TabsTrigger value="html" className="data-[state=active]:bg-orange-600/70">HTML</TabsTrigger>
+                  <TabsTrigger value="css" className="data-[state=active]:bg-blue-600/70">CSS</TabsTrigger>
+                  <TabsTrigger value="js" className="data-[state=active]:bg-yellow-600/70">JavaScript</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="html" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
+                  <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ maxHeight: "70vh" }}>
                     <CodeBlock code={gameData?.html || ""} language="html" />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="css" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
+                  <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ maxHeight: "70vh" }}>
                     <CodeBlock code={gameData?.css || ""} language="css" />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="js" className="m-0">
-                  <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: "70vh" }}>
+                  <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ maxHeight: "70vh" }}>
                     <CodeBlock code={gameData?.js || ""} language="javascript" />
                   </div>
                 </TabsContent>
@@ -549,16 +588,21 @@ export default function GamePage() {
 
             {/* Logs Tab */}
             <TabsContent value="logs" className="m-0">
-              <div className="bg-gray-900 p-4 overflow-auto rounded-lg shadow-lg" style={{ height: "70vh" }}>
+              <div className="bg-gray-900 p-6 overflow-auto rounded-2xl shadow-2xl border border-gray-700" style={{ height: "70vh" }}>
                 <div className="font-mono text-sm text-gray-300">
                   {logs.length > 0 ? (
                     logs.map((log, index) => (
-                      <div key={index} className="py-1 border-b border-gray-800">
+                      <div key={index} className="py-2 border-b border-gray-800 hover:bg-gray-800/50 px-2 rounded">
+                        <span className="text-gray-500 mr-3">{index + 1}.</span>
                         {log}
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 italic">No logs available. Run the game to see console output here.</p>
+                    <div className="text-center py-12">
+                      <Eye className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-500 italic text-lg">No logs available yet</p>
+                      <p className="text-gray-600 text-sm mt-2">Run the game to see console output here</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -567,8 +611,8 @@ export default function GamePage() {
             {/* Documentation Tab */}
             {gameData?.md && (
               <TabsContent value="docs" className="m-0">
-                <div className="bg-white p-6 rounded-lg shadow-lg overflow-auto" style={{ height: "70vh" }}>
-                  <div className="prose max-w-none">
+                <div className="bg-white p-8 rounded-2xl shadow-2xl overflow-auto border border-gray-200" style={{ height: "70vh" }}>
+                  <div className="prose prose-lg max-w-none">
                     <ReactMarkdown>{gameData.md}</ReactMarkdown>
                   </div>
                 </div>
@@ -577,9 +621,12 @@ export default function GamePage() {
           </Tabs>
         </main>
 
-        {/* Footer */}
-        <footer className="bg-gray-800 text-gray-300 p-4 text-center text-sm">
-          <p>Incremental Game Generator - Built with Next.js and OpenAI</p>
+        {/* Enhanced Footer */}
+        <footer className="bg-gradient-to-r from-gray-800 via-purple-800 to-gray-800 text-gray-300 p-6 text-center border-t border-purple-500/30">
+          <div className="space-y-2">
+            <p className="text-base font-medium">Incremental Game Generator</p>
+            <p className="text-sm text-gray-400">Built with Next.js and OpenAI • Powered by GPT-4o</p>
+          </div>
         </footer>
       </div>
     </>
