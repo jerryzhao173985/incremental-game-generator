@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText, GamepadIcon, ArrowLeft } from "lucide-react"
+import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText, Gamepad, ArrowLeft } from "lucide-react"
 import Script from "next/script"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -10,10 +10,27 @@ import ReactMarkdown from "react-markdown"
 
 // Simple syntax highlighting component
 function CodeBlock({ code, language }: { code: string; language: string }) {
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      // You could add a toast notification here if desired
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+    }
+  }
+
   return (
     <div className="relative group">
-      <div className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
-        {language.toUpperCase()}
+      <div className="absolute top-3 right-3 flex items-center space-x-2">
+        <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
+          {language.toUpperCase()}
+        </span>
+        <button
+          className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 focus:outline-none transition-colors"
+          onClick={copyToClipboard}
+        >
+          Copy
+        </button>
       </div>
       <pre className={`language-${language} overflow-auto p-6 bg-gray-900 text-gray-100 rounded-xl border border-gray-700`}>
         <code className="text-sm leading-relaxed">{code}</code>
@@ -376,7 +393,7 @@ export default function GamePage() {
           
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
-              onClick={() => window.history.back()}
+              onClick={() => router.back()}
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -431,7 +448,7 @@ export default function GamePage() {
               <div className="text-center lg:text-left">
                 <div className="flex items-center justify-center lg:justify-start mb-2">
                   <div className="bg-purple-500/20 p-2 rounded-xl mr-3">
-                    <GamepadIcon className="h-6 w-6 text-purple-300" />
+                    <Gamepad className="h-6 w-6 text-purple-300" />
                   </div>
                   <h1 className="text-2xl lg:text-3xl font-bold text-white">{gameData?.title || "Game"}</h1>
                 </div>
@@ -442,7 +459,7 @@ export default function GamePage() {
               
               <div className="flex gap-3">
                 <Button
-                  onClick={() => window.history.back()}
+                  onClick={() => router.back()}
                   variant="outline"
                   className="border-purple-400/50 hover:bg-purple-700/30 text-white transition-all duration-200"
                 >
