@@ -144,7 +144,10 @@ export default function ApiKeyForm({ onApiKeyValidated }: ApiKeyFormProps) {
             </div>
             
             {validationError && (
-              <div className="bg-red-500/15 border border-red-400/40 rounded-lg p-4">
+              <div
+                role="alert"
+                className="bg-red-500/15 border border-red-400/40 rounded-lg p-4"
+              >
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
