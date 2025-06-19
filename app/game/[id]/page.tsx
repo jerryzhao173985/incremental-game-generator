@@ -199,11 +199,14 @@ export default function GamePage() {
 
     // Set up console log capture
     const debugPanel = document.getElementById("debug-panel")
+    let originalConsoleLog: (...args: any[]) => void = console.log
     if (debugPanel) {
-      const originalConsoleLog = console.log
-      console.log = (...args) => {
+      originalConsoleLog = console.log
+      console.log = (...args: any[]) => {
         originalConsoleLog.apply(console, args)
-        const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" ")
+        const message = args
+          .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
+          .join(" ")
 
         setLogs((prev) => [...prev, message])
 
@@ -344,10 +347,10 @@ export default function GamePage() {
       }
       // Reset console.log
       if (typeof window !== "undefined") {
-        console.log = console.log.__proto__.log || console.log
+        console.log = originalConsoleLog
       }
     }
-  }, [gameData, showDebug, threeJsLoaded, activeTab])
+  }, [gameData, showDebug, threeJsLoaded, activeTab, gameLoaded])
 
   // Listen for messages from the game
   useEffect(() => {
