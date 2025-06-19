@@ -347,7 +347,7 @@ export default function GamePage() {
         console.log = console.log.__proto__.log || console.log
       }
     }
-  }, [gameData, showDebug, threeJsLoaded, activeTab])
+  }, [gameData, showDebug, threeJsLoaded, activeTab, gameLoaded])
 
   // Listen for messages from the game
   useEffect(() => {
