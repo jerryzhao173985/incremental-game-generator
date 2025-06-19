@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, Home, RefreshCw, Eye, Code, Play, FileText, Gamepad, ArrowLeft } from "lucide-react"
 import Script from "next/script"
@@ -59,6 +59,7 @@ export default function GamePage() {
   const [activeTab, setActiveTab] = useState("game")
   const [gameLoaded, setGameLoaded] = useState(false)
   const [gameError, setGameError] = useState<string | null>(null)
+  const originalConsoleLogRef = useRef<typeof console.log | null>(null)
 
   useEffect(() => {
     // Get the game ID from the URL
@@ -200,9 +201,9 @@ export default function GamePage() {
     // Set up console log capture
     const debugPanel = document.getElementById("debug-panel")
     if (debugPanel) {
-      const originalConsoleLog = console.log
+      originalConsoleLogRef.current = console.log
       console.log = (...args) => {
-        originalConsoleLog.apply(console, args)
+        originalConsoleLogRef.current?.apply(console, args)
         const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" ")
 
         setLogs((prev) => [...prev, message])
@@ -343,11 +344,11 @@ export default function GamePage() {
         document.head.removeChild(styleElement)
       }
       // Reset console.log
-      if (typeof window !== "undefined") {
-        console.log = console.log.__proto__.log || console.log
+      if (typeof window !== "undefined" && originalConsoleLogRef.current) {
+        console.log = originalConsoleLogRef.current
       }
     }
-  }, [gameData, showDebug, threeJsLoaded, activeTab])
+  }, [gameData, showDebug, threeJsLoaded, activeTab, gameLoaded])
 
   // Listen for messages from the game
   useEffect(() => {
