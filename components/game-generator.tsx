@@ -46,6 +46,7 @@ export default function GameGenerator() {
   const [logs, setLogs] = useState<string[]>([])
   const finalGameIframeRef = useRef<HTMLIFrameElement>(null)
   const [isOpeningNewTab, setIsOpeningNewTab] = useState(false)
+  const [additionalInstructions, setAdditionalInstructions] = useState("")
 
   // Load saved games from localStorage on component mount
   useEffect(() => {
@@ -127,7 +128,13 @@ export default function GameGenerator() {
     setErrorMessage(null)
 
     try {
-      const newStage = await generateGameStage(currentStage, gameTheme || themeInput, stages, apiKey)
+      const newStage = await generateGameStage(
+        currentStage,
+        gameTheme || themeInput,
+        stages,
+        apiKey,
+        additionalInstructions,
+      )
 
       // Check if the stage has an error title
       if (newStage.title.includes("Error") || newStage.title.includes("API Key Missing")) {
@@ -150,6 +157,7 @@ export default function GameGenerator() {
         setIframeError(null)
         setLogs([])
         setRefreshKey((prev) => prev + 1)
+        setAdditionalInstructions("")
       }
     } catch (error: any) {
       console.error("Error generating game stage:", error)
@@ -602,16 +610,27 @@ export default function GameGenerator() {
               <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
             ))}
 
-            {stages.length === 0 && (
-              <div className="text-center py-12 text-purple-200">
-                <p className="text-xl mb-4">Ready to build your "{gameTheme}" game!</p>
-                <p>Click the "Generate First Stage" button above to start creating your game.</p>
-                <p className="mt-4 text-sm opacity-70">
-                  Each stage will build upon the previous one, creating a more complex and engaging game.
-                </p>
-              </div>
-            )}
-          </div>
+          {stages.length === 0 && (
+            <div className="text-center py-12 text-purple-200">
+              <p className="text-xl mb-4">Ready to build your "{gameTheme}" game!</p>
+              <p>Click the "Generate First Stage" button above to start creating your game.</p>
+              <p className="mt-4 text-sm opacity-70">
+                Each stage will build upon the previous one, creating a more complex and engaging game.
+              </p>
+            </div>
+          )}
+
+          {!isComplete && (
+            <div>
+              <Textarea
+                placeholder="Additional instructions for the next stage (optional)"
+                value={additionalInstructions}
+                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+          )}
+        </div>
         </Card>
       )}
 
