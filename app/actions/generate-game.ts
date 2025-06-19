@@ -17,6 +17,7 @@ async function generateStageSpec(
   stageNumber: number,
   theme: string,
   previousStages: GameStageData[],
+  additionalInstructions: string,
   apiKey: string,
 ): Promise<StageSpec> {
   try {
@@ -46,6 +47,10 @@ Please create detailed specifications for this stage of the game development. Th
       }
 
       prompt += `\nCreate specifications that build upon this foundation and enhance the game for stage ${stageNumber + 1}.`
+    }
+
+    if (additionalInstructions && additionalInstructions.trim().length > 0) {
+      prompt += `\nUser provided additional instructions for this stage:\n${additionalInstructions}\nPlease incorporate these requests into the specifications.`
     }
 
     // Stage-specific guidance
@@ -175,6 +180,7 @@ export async function generateGameStage(
   stageNumber: number,
   theme: string,
   previousStages: GameStageData[],
+  additionalInstructions: string,
   apiKey: string,
 ): Promise<GameStageData> {
   if (!apiKey || typeof apiKey !== "string") {
@@ -192,7 +198,13 @@ export async function generateGameStage(
   try {
     // Step 1: Generate specifications for this stage using GPT-4o
     console.log(`Generating specifications for stage ${stageNumber + 1}...`)
-    const stageSpec = await generateStageSpec(stageNumber, theme, previousStages, apiKey)
+    const stageSpec = await generateStageSpec(
+      stageNumber,
+      theme,
+      previousStages,
+      additionalInstructions,
+      apiKey,
+    )
     console.log("Stage specifications generated:", stageSpec)
 
     // Step 2: Use the specifications to generate the actual game code using GPT-4o
@@ -221,6 +233,8 @@ ${stageSpec.userExperience.map((ux) => `- ${ux}`).join("\n")}
 
 Improvements Over Previous Stage:
 ${stageSpec.improvements.map((imp) => `- ${imp}`).join("\n")}
+
+${additionalInstructions && additionalInstructions.trim().length > 0 ? `User Additional Instructions:\n${additionalInstructions}` : ""}
 
 IMPORTANT BROWSER COMPATIBILITY REQUIREMENTS:
 1. The game MUST work properly when embedded in an iframe AND when opened in a new browser window
