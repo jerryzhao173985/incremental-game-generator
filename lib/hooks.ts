@@ -90,3 +90,22 @@ export function useWindowSize() {
 
   return windowSize
 }
+
+/**
+ * Detect if the viewport width is less than the given breakpoint.
+ * @param breakpoint Defaults to 768px (mobile).
+ */
+export function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const update = () => setIsMobile(window.innerWidth < breakpoint)
+
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [breakpoint])
+
+  return isMobile
+}
