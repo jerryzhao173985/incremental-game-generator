@@ -3,6 +3,7 @@ import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import ThemeToggle from "@/components/theme-toggle"
 import { Analytics } from "@vercel/analytics/react"
 import ErrorBoundary from "@/components/error-boundary"
 import { Suspense } from "react"
@@ -31,6 +32,9 @@ export default function RootLayout({
         <Suspense fallback={<div>Loading...</div>}>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ErrorBoundary>{children}</ErrorBoundary>
+            <div className="fixed top-4 right-4 z-50">
+              <ThemeToggle />
+            </div>
           </ThemeProvider>
           <Analytics />
         </Suspense>
