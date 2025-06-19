@@ -117,3 +117,58 @@ export function decompressGameData(compressedData: string): GameStageData {
     throw new Error("Failed to decompress game data")
   }
 }
+
+// Base styles used for game previews and pages
+export function getGameStyles(extraCss = "", hideDebugPanel = false): string {
+  return `
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Arial', sans-serif;
+        background-color: white;
+      }
+      #game-container {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        position: relative;
+        background-color: white;
+        color: black;
+      }
+      #error-display {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(255,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        z-index: 9999;
+        max-width: 80%;
+        word-break: break-word;
+      }
+      #debug-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 5px;
+        font-family: monospace;
+        font-size: 10px;
+        z-index: 9999;
+        max-width: 300px;
+        max-height: 200px;
+        overflow: auto;
+        ${hideDebugPanel ? "display: none;" : ""}
+      }
+      * {
+        box-sizing: border-box;
+      }
+      ${extraCss}
+    `
+}
