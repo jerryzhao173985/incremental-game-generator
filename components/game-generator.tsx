@@ -599,7 +599,7 @@ export default function GameGenerator() {
 
           <div className="space-y-4">
             {stages.map((stage, index) => (
-              <GameStage key={index} stageNumber={index + 1} stageData={stage} isLatest={index === stages.length - 1} />
+              <GameStage key={index} stageNumber={index + 1} stageData={stage} />
             ))}
 
             {stages.length === 0 && (
