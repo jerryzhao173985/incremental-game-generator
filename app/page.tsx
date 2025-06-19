@@ -6,15 +6,18 @@ export default function Home() {
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-10 sm:mb-14">
           <div className="space-y-6">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6 leading-tight tracking-tight">
-              <span className="bg-gradient-to-r from-purple-200 via-white to-purple-200 bg-clip-text text-transparent">
-                Incremental Game
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200 bg-clip-text text-transparent">
-                Generator
-              </span>
-            </h1>
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-3 leading-tight tracking-tight">
+                <span className="bg-gradient-to-r from-purple-200 via-white to-purple-200 bg-clip-text text-transparent">
+                  Incremental Game
+                </span>
+              </h1>
+              <h2 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight tracking-tight">
+                <span className="bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200 bg-clip-text text-transparent">
+                  Generator
+                </span>
+              </h2>
+            </div>
             
             <div className="max-w-4xl mx-auto space-y-4">
               <p className="text-xl sm:text-2xl text-purple-200 leading-relaxed font-medium">

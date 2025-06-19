@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type KeyboardEvent } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp, FileText, Play, Cog, Rocket, Star, Zap } from "lucide-react"
 import { Button } from "./ui/button"
@@ -24,7 +24,7 @@ export default function PipelineDocumentation() {
     setIsExpanded(prev => !prev)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       handleToggle()
@@ -55,7 +55,7 @@ export default function PipelineDocumentation() {
             variant="ghost" 
             size="sm" 
             className="text-purple-200 hover:text-white hover:bg-purple-600/30 transition-all duration-200"
-            tabIndex={-1}
+            aria-hidden="true"
           >
             {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </Button>
@@ -216,10 +216,10 @@ export default function PipelineDocumentation() {
               </h4>
 
               <div className="grid gap-3">
-                {HOW_IT_WORKS_STEPS.map((step) => (
+                {HOW_IT_WORKS_STEPS.map((step, index) => (
                   <div key={step} className="flex items-start p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="bg-purple-500/30 text-purple-200 rounded-full w-7 h-7 flex items-center justify-center font-semibold mr-4 mt-0.5 text-sm flex-shrink-0">
-                      {HOW_IT_WORKS_STEPS.indexOf(step) + 1}
+                      {index + 1}
                     </div>
                     <p className="text-purple-200 leading-relaxed">{step}</p>
                   </div>
